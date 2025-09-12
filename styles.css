@@ -1,0 +1,218 @@
+/*
+  AtemiMX Stylesheet (v1.2 FUSION)
+  - Fusiona la estética de index2.html con la estructura de index.html
+  - Paleta "Mexicano Futurista" con Verde Neón y Guinda
+  - Componentes modernos: cards, botones, inputs
+*/
+
+:root {
+  /* Paleta Principal (Futurista) */
+  --primario: #39FF14; /* Verde Neón */
+  --secundario: #8A1538; /* Guinda Mexicano */
+  --acento: #E2B007; /* Dorado (del original) */
+  --texto: #e5e7eb;
+  --texto-oscuro: #111827;
+  --fondo: #0a0a0a;
+  --panel: rgba(255, 255, 255, 0.03);
+  --borde: rgba(138, 21, 56, 0.3);
+
+  /* Radios y Sombras */
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --shadow-soft: 0 8px 25px rgba(0,0,0,0.4);
+  --shadow-glow-primario: 0 0 20px rgba(57, 255, 20, 0.5);
+  --shadow-glow-secundario: 0 0 20px rgba(138, 21, 56, 0.5);
+
+  /* Layout */
+  --sidebar-bg: #0f1724;
+}
+
+/* --- RESET Y BASE --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Bahnschrift', 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+::selection { background-color: var(--primario); color: var(--texto-oscuro); }
+.hidden { display: none !important; }
+
+/* --- COMPONENTES GENERALES --- */
+.card {
+  background-color: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+.card:hover { 
+  transform: translateY(-5px); 
+  box-shadow: var(--shadow-soft); 
+  border-color: rgba(138, 21, 56, 0.5);
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+  user-select: none;
+  text-transform: uppercase;
+}
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.btn-primary {
+  background-color: var(--primario);
+  color: var(--texto-oscuro);
+  border-color: var(--primario);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.3);
+}
+.btn-primary:hover:not(:disabled) { transform: scale(1.05); box-shadow: var(--shadow-glow-primario); }
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--texto);
+  border-color: var(--secundario);
+}
+.btn-secondary:hover:not(:disabled) { background-color: var(--secundario); color: white; }
+
+.input-field, .select-field {
+  width: 100%;
+  background-color: rgba(0,0,0,0.3);
+  border: 1px solid var(--secundario);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  color: var(--texto);
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-field:focus, .select-field:focus {
+  outline: none;
+  border-color: var(--primario);
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.4);
+}
+
+.select-field {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2339FF14' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+.row { display: flex; gap: 1rem; width: 100%; }
+.row > div { flex: 1; }
+label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; opacity: 0.8; }
+
+/* --- LAYOUT DE LA APP --- */
+#main-app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 64px 1fr;
+  grid-template-areas: "header header" "sidebar content";
+  height: 100vh;
+  width: 100vw;
+  opacity: 0;
+  transition: opacity .5s;
+}
+#main-app.visible { opacity: 1; }
+
+#app-header {
+  grid-area: header;
+  background-color: var(--fondo);
+  border-bottom: 1px solid var(--borde);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+}
+
+#app-sidebar {
+  grid-area: sidebar;
+  background-color: var(--sidebar-bg);
+  padding-top: 40px;
+  border-right: 1px solid var(--borde);
+}
+#app-sidebar nav ul { list-style:none; padding:0; margin:0; }
+#app-sidebar nav a {
+  display:flex; align-items:center; gap:12px;
+  color: var(--texto); text-decoration:none;
+  padding:14px 24px; font-size:1rem;
+  transition:all .3s; cursor:pointer; border-left:4px solid transparent;
+}
+#app-sidebar nav a:hover { background-color: var(--panel); }
+#app-sidebar nav a.active {
+  color: var(--primario);
+  background-color: var(--panel);
+  border-left: 4px solid var(--primario);
+}
+
+#app-content {
+  grid-area: content;
+  padding: 40px;
+  overflow-y: auto;
+  background-color: #111827;
+}
+
+.content-view { animation: fadeIn 0.5s; }
+
+/* --- PANTALLAS INICIALES --- */
+#splash-screen{
+  position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background: var(--fondo);
+  z-index:2000; transition: opacity .5s, transform .5s;
+}
+.splash-iso{ width:120px; height:120px; border-radius:50%; background:#ffffff0f; padding:18px; box-shadow:0 0 40px rgba(0,208,132,.33); animation:pulse 1.6s infinite; }
+.splash-title{ margin:18px 0 6px; letter-spacing:.5px; color:#fff; }
+.splash-sub{ color:#d1d5db; }
+@keyframes pulse {0%{box-shadow:0 0 0 rgba(57,255,20,.2)} 50%{box-shadow:0 0 30px rgba(57,255,20,.4)} 100%{box-shadow:0 0 0 rgba(57,255,20,.2)}}
+#splash-screen.splash-hide{ opacity: 0; transform: scale(0.95); pointer-events: none; }
+
+#onboardingPanel {
+  max-width: 700px;
+  margin: 40px auto;
+}
+
+/* --- VISTA CATÁLOGO --- */
+#cat-lista {
+  list-style: none;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.cat-item {
+  padding: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cat-item:hover {
+  background-color: var(--panel);
+  border-color: var(--secundario);
+}
+.cat-item.selected {
+  background-color: var(--secundario);
+  color: white;
+  border-color: var(--primario);
+  box-shadow: var(--shadow-glow-primario);
+  outline: 2px solid var(--primario);
+}
+
+/* --- VISTA PLANEACIÓN --- */
+.plan-card {
+  padding: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}

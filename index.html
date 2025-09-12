@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AtemiMX — App Docente</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen" aria-label="Bienvenida" role="status">
+    <img src="assets/atemi-iso.svg" alt="ISO AtemiMX" class="splash-iso" />
+    <h1 class="splash-title">AtemiMX — App Docente</h1>
+    <p class="splash-sub">Planifica · Inspira · Enseña</p>
+  </div>
+
+  <!-- APP PRINCIPAL -->
+  <div id="main-app" class="hidden">
+    <header id="app-header">
+      <div class="brand" style="display:flex;align-items:center;gap:10px">
+        <img src="assets/atemi-iso.svg" alt="ISO" style="width:34px;height:34px;border-radius:50%;object-fit:contain;background:#ffffff1a">
+        <span style="font-weight:700;letter-spacing:.3px">AtemiMX</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="btn-reset">Reiniciar Onboarding</button>
+      </div>
+    </header>
+
+    <aside id="app-sidebar">
+      <nav>
+        <ul>
+          <li><a data-view="onboarding">🚀 Onboarding</a></li>
+          <li><a data-view="catalogo">📚 Catálogo NEM</a></li>
+          <li><a data-view="planeacion">📖 Planeación</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main id="app-content">
+      <!-- VISTA ONBOARDING -->
+      <div id="view-onboarding" class="content-view card">
+        <h2>Configuración Inicial</h2>
+        <p style="opacity: 0.7; margin-bottom: 1.5rem;">Completa tus datos para personalizar la experiencia.</p>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="docente">Nombre del Docente</label><input id="docente" placeholder="Ej. Hugo Sánchez" class="input-field" /></div>
+          <div><label for="escuela">Escuela</label><input id="escuela" placeholder="Ej. Secundaria Técnica 310" class="input-field" /></div>
+        </div>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="ciclo">Ciclo Escolar</label><input id="ciclo" placeholder="2025-2026" class="input-field" /></div>
+          <div><label for="fase">Fase</label><input id="fase" type="number" min="2" max="6" placeholder="Ej. 6" class="input-field" /></div>
+        </div>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="grados">Grados (separados por coma)</label><input id="grados" placeholder="1, 2, 3" class="input-field" /></div>
+          <div><label for="grupos">Grupos (separados por coma)</label><input id="grupos" placeholder="1A, 1B, 2C" class="input-field" /></div>
+        </div>
+        <div class="row" style="margin-bottom: 1.5rem;">
+          <div><label for="campos">Campos Formativos (separados por coma)</label><input id="campos" placeholder="Saberes y Pensamiento Científico" class="input-field" /></div>
+          <div><label for="ejes">Ejes Articuladores (separados por coma)</label><input id="ejes" placeholder="Inclusión, Pensamiento crítico" class="input-field" /></div>
+        </div>
+        <input id="estilo" type="hidden" />
+        <button id="btnGuardarOnboarding" class="btn btn-primary">Guardar y Continuar</button>
+      </div>
+
+      <!-- VISTA CATÁLOGO -->
+      <div id="view-catalogo" class="content-view card hidden">
+        <h2>Catálogo de Contenidos (NEM)</h2>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="cat-fase">Fase</label><select id="cat-fase" class="select-field"></select></div>
+          <div><label for="cat-campo">Campo Formativo</label><select id="cat-campo" class="select-field"></select></div>
+          <div><label for="cat-grado">Grado</label><select id="cat-grado" class="select-field"></select></div>
+        </div>
+        <ol id="cat-lista"></ol>
+        <button id="cat-add" class="btn btn-primary" style="margin-top:1rem">Añadir a Planeación</button>
+        <p style="font-size:12px;color:#cbd5e1;margin-top:1rem;opacity:0.7;">Tip: haz clic en los contenidos para seleccionarlos.</p>
+      </div>
+
+      <!-- VISTA PLANEACIÓN -->
+      <div id="view-planeacion" class="content-view card hidden">
+        <h2>Resumen de Planeación</h2>
+        <div id="plan-resumen"></div>
+        <button id="plan-export" class="btn btn-secondary" style="margin-top:1rem">Exportar como JSON</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- LÓGICA PRINCIPAL Y MÓDULOS -->
+  <script type="module">
+    // Importar módulos
+    import { initOnboarding } from './modules/onboarding.js';
+    import { initCatalogo } from './modules/catalogo.js';
+    import { initPlaneacion } from './modules/planeacion.js';
+    import { Storage, K } from './services/storage.js';
+
+    // --- INICIALIZACIÓN GENERAL ---
+    function init() {
+      const mainApp = document.getElementById('main-app');
+      const splash = document.getElementById('splash-screen');
+      
+      // Ocultar splash y mostrar app
+      setTimeout(() => {
+        splash.classList.add('splash-hide');
+        mainApp.classList.add('visible');
+      }, 500);
+
+      // Lógica de navegación
+      const views = document.querySelectorAll('.content-view');
+      const navLinks = document.querySelectorAll('#app-sidebar nav a');
+      
+      function showView(viewId) {
+        views.forEach(v => v.classList.toggle('hidden', v.id !== `view-${viewId}`));
+        navLinks.forEach(a => a.classList.toggle('active', a.dataset.view === viewId));
+        // Guardar vista actual
+        Storage.set('atemix.last_view', viewId);
+      }
+
+      navLinks.forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          showView(a.dataset.view);
+        });
+      });
+
+      // Cargar última vista o la de onboarding
+      const lastView = Storage.get('atemix.last_view', 'onboarding');
+      const config = Storage.get(K.CONFIG);
+      showView(config ? lastView : 'onboarding');
+
+      // Listener para cambiar de vista tras onboarding
+      document.addEventListener('atemix:onboarding:ready', () => {
+        showView('catalogo');
+      });
+
+      // Botón de reseteo
+      document.getElementById('btn-reset')?.addEventListener('click', () => {
+        if (confirm('¿Seguro que quieres borrar tu configuración de Onboarding?')) {
+          Storage.del(K.CONFIG);
+          alert('Configuración eliminada. Por favor, completa el Onboarding de nuevo.');
+          showView('onboarding');
+          location.reload();
+        }
+      });
+
+      // Inicializar todos los módulos de la aplicación
+      initOnboarding();
+      initCatalogo();
+      initPlaneacion();
+    }
+
+    // Arrancar la aplicación
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
