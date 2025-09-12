@@ -279,3 +279,15 @@ body {
 #gradeTable th,#gradeTable td,#gb-tabla th,#gb-tabla td{border:1px solid #334155;padding:6px 8px;font-size:13px;text-align:center}
 #gradeTable th,#gb-tabla th{background:#1f2937;color:#e2e8f0}
 #rb-list li,#bz-list li,#dj-list li{border:1px solid #334155;border-radius:10px;padding:.6rem;margin:.4rem 0;background:#0a1220}
+
+/* === AtemiMX · FIX de vistas y navegación === */
+.hidden{display:none!important}
+/* Por defecto, las vistas no se muestran hasta que JS quite .hidden */
+.content-view{display:block}
+/* Si prefieres estricto: .content-view{display:none} .content-view:not(.hidden){display:block} */
+#app-sidebar nav a{display:block;padding:.6rem .75rem;border-radius:.8rem;cursor:pointer;text-decoration:none}
+#app-sidebar nav a[aria-current="page"], #app-sidebar nav a.active{outline:2px solid #00FF6A;background:#0a1220}
+/* Splash seguro */
+#splash-screen{display:grid;place-items:center;min-height:100vh;transition:opacity .35s ease}
+#splash-screen.splash-hide{opacity:0;pointer-events:none}
+#main-app.visible{display:grid}
