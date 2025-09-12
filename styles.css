@@ -272,3 +272,10 @@ body {
 #gradeTable th{background:#1f2937;color:#e2e8f0}
 .seat{border:1px solid #334155;padding:8px;border-radius:6px;background:#1e293b;color:#fff;text-align:center;cursor:pointer;font-size:12px;min-height:36px;display:flex;align-items:center;justify-content:center;margin:2px}
 .seat.empty{opacity:.5}
+
+
+/* v2.0 MUST – estilos mínimos nuevos */
+#gradeTable table, #gb-tabla table{width:100%;border-collapse:collapse}
+#gradeTable th,#gradeTable td,#gb-tabla th,#gb-tabla td{border:1px solid #334155;padding:6px 8px;font-size:13px;text-align:center}
+#gradeTable th,#gb-tabla th{background:#1f2937;color:#e2e8f0}
+#rb-list li,#bz-list li,#dj-list li{border:1px solid #334155;border-radius:10px;padding:.6rem;margin:.4rem 0;background:#0a1220}
