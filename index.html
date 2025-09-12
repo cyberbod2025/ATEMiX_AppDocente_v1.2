@@ -155,7 +155,9 @@ Colabora con respeto"></textarea></div>
     import { initCatalogo } from './modules/catalogo.js';
     import { initPlaneacion } from './modules/planeacion.js';
     import { initGradebook } from './modules/gradebook.js';
-    import { initSeating } from './modules/seating.js';
+    import { initRubricas } from './modules/rubricas.js';
+    import { initInsignias } from './modules/insignias.js';
+    import { initDiario } from './modules/diario.js';
     import { Storage, K } from './services/storage.js';
 
     // --- INICIALIZACIÓN GENERAL ---
@@ -207,10 +209,14 @@ Colabora con respeto"></textarea></div>
         }
       });
 
-      // Inicializar todos los módulos de la aplicación
+      // Inicializar todos los módulos
       initOnboarding();
       initCatalogo();
       initPlaneacion();
+      initGradebook();
+      initRubricas();
+      initInsignias();
+      initDiario();
     }
 
     // Arrancar la aplicación
