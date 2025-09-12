@@ -43,15 +43,17 @@ Desarrollar una aplicación web integral para docentes de México (Fases 2–6),
 - **Planeación Mínima:** Los usuarios pueden seleccionar contenidos del catálogo y añadirlos a una planeación simple.
 - **Exportación:** La planeación creada se puede exportar como un archivo JSON.
 - **Persistencia:** Toda la configuración y la planeación se guardan en el navegador del usuario.
+- **Libro de Calificaciones:** Gestiona listas de alumnos, actividades con ponderación, calcula promedios y exporta a CSV.
+- **Módulo de Rúbricas:** Permite generar y aplicar rúbricas de evaluación.
+- **Diario Docente:** Registro de incidencias con evidencia multimedia.
+- **Insignias:** Administración de reconocimientos por grupo y alumno.
 
 ---
 
 ## 🔮 Próximos Pasos (Visión v2.0)
 
-- **Libro de Calificaciones (Gradebook):** Gestionar listas de alumnos, actividades con ponderación, calcular promedios y exportar a CSV.
 - **Plano de Asientos (Seating Plan):** Crear un mapa del salón de clases, asignar alumnos de forma aleatoria y tomar notas por asiento.
-- **Módulo de Rúbricas:** Generar y aplicar rúbricas de evaluación.
-- **Diario y Respaldo Docente:** Módulo para registrar incidencias con evidencia multimedia y generar actas, funcionando como un respaldo para el docente.
+- **Otras mejoras en la experiencia y nuevas funcionalidades.**
 
 ---
 
