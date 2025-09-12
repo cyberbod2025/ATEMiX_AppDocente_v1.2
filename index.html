@@ -30,9 +30,11 @@
     <aside id="app-sidebar">
       <nav>
         <ul>
-          <li><a data-view="onboarding">🚀 Onboarding</a></li>
-          <li><a data-view="catalogo">📚 Catálogo NEM</a></li>
-          <li><a data-view="planeacion">📖 Planeación</a></li>
+          <li><a href="#" data-view="onboarding">🚀 Onboarding</a></li>
+          <li><a href="#" data-view="catalogo">📚 Catálogo NEM</a></li>
+          <li><a href="#" data-view="planeacion">📖 Planeación</a></li>
+          <li><a href="#" data-view="gradebook">📝 Calificaciones</a></li>
+          <li><a href="#" data-view="seating">🎲 Asientos</a></li>
         </ul>
       </nav>
     </aside>
@@ -81,6 +83,40 @@
         <div id="plan-resumen"></div>
         <button id="plan-export" class="btn btn-secondary" style="margin-top:1rem">Exportar como JSON</button>
       </div>
+
+      <!-- VISTA GRADEBOOK -->
+      <div id="view-gradebook" class="content-view card hidden">
+        <h2>Libro de Calificaciones (Gradebook)</h2>
+        <p style="opacity: 0.7; margin-bottom: 1.5rem;">Pega la lista de alumnos y las tareas con su ponderación.</p>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div>
+            <label for="alumnos">Lista de Alumnos (uno por línea)</label>
+            <textarea id="alumnos" class="input-field" rows="5"></textarea>
+          </div>
+          <div>
+            <label for="asignaturas">Tareas (formato: Tarea,peso%)</label>
+            <textarea id="asignaturas" class="input-field" rows="5" placeholder="Ej. Examen,30&#10;Proyecto,25"></textarea>
+          </div>
+        </div>
+        <button id="cargarGradebook" class="btn btn-primary">Generar Tabla</button>
+        <div id="gradeActions" style="margin-top: 1rem; gap: 1rem;"></div>
+        <div id="gradeTable" style="margin-top: 1.5rem; overflow-x: auto;"></div>
+      </div>
+
+      <!-- VISTA SEATING -->
+      <div id="view-seating" class="content-view card hidden">
+        <h2>Plano de Asientos</h2>
+        <div class="row" style="margin-bottom: 1rem; align-items: flex-end;">
+          <div><label for="filas">Filas</label><input id="filas" type="number" value="3" class="input-field" /></div>
+          <div><label for="columnas">Columnas</label><input id="columnas" type="number" value="5" class="input-field" /></div>
+          <button id="generarPlano" class="btn btn-secondary">Generar</button>
+        </div>
+        <div id="plano" style="display: grid; gap: 8px; margin-top: 1.5rem;"></div>
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+            <button id="aleatorioAsientos" class="btn btn-secondary">Asignar Aleatorio</button>
+            <button id="elegirAzar" class="btn btn-primary">Elegir al Azar</button>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -90,6 +126,8 @@
     import { initOnboarding } from './modules/onboarding.js';
     import { initCatalogo } from './modules/catalogo.js';
     import { initPlaneacion } from './modules/planeacion.js';
+    import { initGradebook } from './modules/gradebook.js';
+    import { initSeating } from './modules/seating.js';
     import { Storage, K } from './services/storage.js';
 
     // --- INICIALIZACIÓN GENERAL ---
