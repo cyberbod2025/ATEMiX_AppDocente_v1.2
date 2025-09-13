@@ -53,6 +53,7 @@ export function initGradebook(){
     box.innerHTML=html; act.style.display='flex';
     act.innerHTML='<button class="btn btn-secondary" id="gb-csv">Exportar CSV</button> <button class="btn" id="gb-xls">Exportar XLS</button> <button class="btn" id="gb-guardar">Guardar</button> <button class="btn" id="gb-ajustar">Ajustar pesos</button> <button class="btn" id="gb-json">Exportar JSON</button> <button class="btn" id="gb-load-json">Cargar JSON</button> <button class="btn" id="gb-attach">Adjuntar enlace</button> <button class="btn btn-secondary" id="gb-ver-adjuntos">Ver adjuntos</button> <button class="btn" id="gb-apply-rubrica">Aplicar rúbrica</button> <button class="btn" id="gb-reporte-clase">Reporte de clase</button> <span id="gb-status" aria-live="polite" style="align-self:center;font-size:12px;color:#94a3b8"></span>';
     const statusEl = act.querySelector('#gb-status');
+    try{ if(!act.querySelector('#gb-xls-multi')){ const _anchor=act.querySelector('#gb-xls'); const _b=document.createElement('button'); _b.className='btn'; _b.id='gb-xls-multi'; _b.textContent='XLS multihoja'; if(_anchor && _anchor.parentElement){ _anchor.insertAdjacentElement('afterend', _b); } else { act.appendChild(_b);} } }catch(_){ }
     let statusTimer = null;
     const setStatus=(text)=>{
       if(!statusEl) return;
@@ -153,6 +154,20 @@ export function initGradebook(){
       let csv=csvSafe('Alumno')+','+cols.map(c=>csvSafe(c.t+(c.type!=='num'?` [${c.type}]`:''))).join(',')+','+csvSafe('Insignias')+','+csvSafe('Promedio')+'\n';
       [...box.querySelectorAll('tbody tr')].forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const cells=[...tr.querySelectorAll('td[contenteditable]')]; const values=cells.map(td=>td.innerText.trim()); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const numericIdx=cells.map((td,i)=> cols[i]?.type==='num' ? i : -1).filter(i=>i>=0); const sumW=numericIdx.reduce((a,i)=> a + (cols[i]?.w||0), 0); const prom = sumW>0 ? numericIdx.reduce((acc,i)=> acc + ((parseFloat(values[i])||0) * (cols[i].w/sumW)), 0) : 0; csv+=csvSafe(nombre)+','+values.map(csvSafe).join(',')+','+csvSafe(insig)+','+csvSafe(prom.toFixed(2))+'\n';});
       const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gradebook_${grupo}.csv`; a.click(); });
+    // XLS multihoja
+    act.querySelector('#gb-xls-multi')?.addEventListener('click',()=>{
+      const escXml=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const header = `<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`;
+      const wsStart=(name)=>`<Worksheet ss:Name="${escXml(name)}"><Table>`; const wsEnd='</Table></Worksheet>';
+      const cellStr=(v)=>`<Cell><Data ss:Type="String">${escXml(v)}</Data></Cell>`; const cellNum=(n)=>`<Cell><Data ss:Type="Number">${Number.isFinite(+n)?(+n):0}</Data></Cell>`;
+      // Hoja Alumnos
+      let s1 = wsStart('Alumnos'); s1 += '<Row>' + ['Alumno', ...cols.map(c=>c.t), 'Insignias','Promedio'].map(cellStr).join('') + '</Row>';
+      [...box.querySelectorAll('tbody tr')].forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const cells=[...tr.querySelectorAll('td[contenteditable]')]; const values=cells.map((td,i)=> cols[i].type==='num' ? (parseFloat(td.innerText)||0) : (td.innerText||'')); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const prom=tr.querySelector('td.prom')?.innerText.trim()||'0'; s1 += '<Row>' + [cellStr(nombre), ...values.map(v=> (typeof v==='number'?cellNum(v):cellStr(String(v)))), cellNum(insig), cellNum(prom)].join('') + '</Row>'; }); s1 += wsEnd;
+      // Hoja Actividades
+      let s2 = wsStart('Actividades'); s2 += '<Row>' + ['Actividad', ...[...box.querySelectorAll('tbody tr')].map(tr=>tr.cells[0].innerText.trim())].map(cellStr).join('') + '</Row>';
+      cols.forEach((c,ci)=>{ const rowVals=[c.t]; [...box.querySelectorAll('tbody tr')].forEach(tr=>{ const td=tr.querySelector(`td[contenteditable][data-c="${ci}"]`); const val = td ? td.innerText.trim() : ''; rowVals.push(val); }); s2 += '<Row>' + rowVals.map((v,idx)=> idx===0?cellStr(v):(Number.isFinite(+v)?cellNum(+v):cellStr(String(v)))).join('') + '</Row>'; }); s2 += wsEnd;
+      const xml = header + s1 + s2 + '</Workbook>'; const blob=new Blob([xml],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gradebook_${grupo}_multi.xls`; a.click();
+    });
     act.querySelector('#gb-xls')?.addEventListener('click',()=>{
       // Excel-friendly HTML export
       const esc = (s)=> String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

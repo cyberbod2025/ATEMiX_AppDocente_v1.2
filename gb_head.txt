@@ -1,0 +1,154 @@
+// Gradebook NEM mínimo: alumnos, actividades con peso, promedio, CSV
+import {Storage,K} from '../services/storage.js';
+import { calcularScoreRubrica } from './rubricas.js';
+export function initGradebook(){
+  const $=(q)=>document.querySelector(q); const v=$('#view-gradebook'); if(!v) return;
+  const gSel=$('#gb-grupo'); const taAl=$('#gb-alumnos'); const taCols=$('#gb-actividades');
+  const btnGen=$('#gb-generar'); const box=$('#gb-tabla'); const act=$('#gb-actions');
+  function gruposDefault(){ const cfg=Storage.get(K.CONFIG)||{}; return (cfg.grupos||[]).join(','); }
+  if (gSel) gSel.value=gSel.value||gruposDefault();
+  // Ayuda y utilidades previas a generar
+  try{
+    const taColsWrap = taCols?.closest('div');
+    if (taColsWrap && !taColsWrap.querySelector('#gb-imp-cols')){
+      const imp=document.createElement('button'); imp.id='gb-imp-cols'; imp.className='btn btn-secondary'; imp.style.marginTop='6px'; imp.textContent='Importar actividades CSV';
+      imp.addEventListener('click',()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv'; inp.addEventListener('change',()=>{ const f=inp.files?.[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ const t=String(rd.result||''); const lines=t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); const parsed=lines.map(l=>{ const c=l.split(','); const title=(c[0]||'Actividad').trim(); const w=c[1]||'0'; const type=(c[2]||'').trim(); const rest=c.slice(3).join(','); return [title,w,type,rest].filter((x,i)=> i<2 || x).join(','); }); taCols.value=parsed.join('\n'); alert('Actividades importadas. Revisa y genera la tabla.'); }; rd.readAsText(f); }); inp.click(); });
+      taColsWrap.appendChild(imp);
+    }
+  }catch(_){ }
+  // Tabs de grupos (mínimo viable) y botón importar alumnos CSV
+  try{
+    const cfg=Storage.get(K.CONFIG)||{}; const grupos=cfg.grupos||[];
+    if(grupos.length>0 && gSel){
+      const tabs=document.createElement('div'); tabs.id='gb-tabs'; tabs.style.margin='6px 0'; tabs.style.display='flex'; tabs.style.gap='6px';
+      grupos.forEach(gr=>{ const b=document.createElement('button'); b.className='btn btn-secondary'; b.textContent=gr; b.addEventListener('click',()=>{ gSel.value=gr; }); tabs.appendChild(b); });
+      gSel.closest('div')?.parentElement?.appendChild(tabs);
+    }
+    const taAl = document.querySelector('#gb-alumnos');
+    if(taAl){ const wrap=taAl.closest('div'); if(wrap){ const imp=document.createElement('button'); imp.id='gb-import-alumnos'; imp.className='btn btn-secondary'; imp.textContent='Importar alumnos CSV'; imp.style.marginTop='6px'; wrap.appendChild(imp); imp.addEventListener('click',()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv'; inp.addEventListener('change',()=>{ const f=inp.files?.[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ const text=String(rd.result||''); const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); taAl.value=lines.join('\n'); }; rd.readAsText(f); }); inp.click(); }); } }
+  }catch(_){ }
+  btnGen?.addEventListener('click',()=>{ 
+    const grupo=(gSel?.value||'GENERAL').trim();
+    const alumnos=(taAl?.value||'').split(/\n/).map(s=>s.trim()).filter(Boolean);
+    const cols=(taCols?.value||'').split(/\n/).map(l=>{
+      const parts=l.split(',');
+      const t=(parts[0]||'Actividad').trim();
+      const w=parseFloat(parts[1]||0);
+      let type='num';
+      let crit='';
+      const cand=(parts[2]||'').trim().toLowerCase();
+      if(['num','txt','icon','color'].includes(cand)){
+        type=cand; crit=parts.slice(3).join(',');
+      } else {
+        crit=parts.slice(2).join(',');
+      }
+      return {t,w,crit:(crit||'').trim(), type};
+    }).filter(x=>x.t);
+    const wSum=cols.reduce((a,b)=>a+(b.type==='num'?b.w:0),0);
+    if(Math.abs(wSum-100)>0.1) alert('Advertencia: los pesos (solo columnas numéricas) no suman 100%');
+    let html='<table role="table"><thead><tr><th scope="col">Alumno</th>'+cols.map(c=>`<th scope="col" title="${c.crit}">${c.t} (${c.w}%)${c.type!=='num'?` [${c.type}]`:''}</th>`).join('')+'<th scope="col">Insignias</th><th scope="col">Promedio</th></tr></thead><tbody>';
+    alumnos.forEach((a,i)=>{ html+=`<tr><td>${a}</td>`+cols.map((c,j)=>`<td contenteditable data-type="${c.type}" data-a="${i}" data-c="${j}"></td>`).join('')+'<td class="insig"></td><td class="prom"></td></tr>';});
+    html+='</tbody></table>';
+    if (!box || !act) return;
+    box.innerHTML=html; act.style.display='flex';
+    act.innerHTML='<button class="btn btn-secondary" id="gb-csv">Exportar CSV</button> <button class="btn" id="gb-xls">Exportar XLS</button> <button class="btn" id="gb-guardar">Guardar</button> <button class="btn" id="gb-ajustar">Ajustar pesos</button> <button class="btn" id="gb-json">Exportar JSON</button> <button class="btn" id="gb-load-json">Cargar JSON</button> <button class="btn" id="gb-attach">Adjuntar enlace</button> <button class="btn btn-secondary" id="gb-ver-adjuntos">Ver adjuntos</button> <button class="btn" id="gb-apply-rubrica">Aplicar rúbrica</button> <button class="btn" id="gb-reporte-clase">Reporte de clase</button> <span id="gb-status" aria-live="polite" style="align-self:center;font-size:12px;color:#94a3b8"></span>';
+    const statusEl = act.querySelector('#gb-status');
+    let statusTimer = null;
+    const setStatus=(text)=>{
+      if(!statusEl) return;
+      statusEl.textContent = text || '';
+      statusEl.classList.remove('saving','saved');
+      if(statusTimer) clearTimeout(statusTimer);
+      if(text === 'Guardando.'){
+        statusEl.classList.add('saving');
+      } else if(text === 'Guardado'){
+        statusEl.classList.add('saved');
+        statusTimer = setTimeout(()=>{ if(statusEl.textContent==='Guardado') statusEl.textContent=''; }, 1200);
+      }
+    };
+    // Prefill from saved data if available
+    const saved = Storage.get(K.GBOOK(grupo));
+    // Adjuntos por celda
+    let attachments = (saved && saved.attachments) ? saved.attachments : {};
+    let rubrics = (saved && saved.rubrics) ? saved.rubrics : {};
+    const keyFor=(ri,ci)=>`${ri}-${ci}`;
+    const hasAttach=(ri,ci)=> Array.isArray(attachments[keyFor(ri,ci)]) && attachments[keyFor(ri,ci)].length>0;
+    const renderAttachIcon=()=>{ [...box.querySelectorAll('tbody tr')].forEach((tr,ri)=>{ [...tr.querySelectorAll('td[contenteditable]')].forEach((td,ci)=>{ const mark = td.querySelector('.gb-clip'); if(mark) mark.remove(); if(hasAttach(ri,ci)){ const m=document.createElement('span'); m.className='gb-clip'; m.textContent='📎'; m.style.float='right'; m.style.opacity='0.8'; m.title = `${attachments[keyFor(ri,ci)].length} adjunto(s)`; td.appendChild(m); } }); }); };
+    if (saved && Array.isArray(saved.vals)) {
+      const rows=[...box.querySelectorAll('tbody tr')];
+      rows.forEach((r,ri)=>{
+        const vals = saved.vals[ri]||[];
+        [...r.querySelectorAll('td[contenteditable]')].forEach((td,ci)=>{
+          const val = vals[ci];
+          const t = cols[ci]?.type;
+          if (t==='color' && typeof val === 'string' && /^#/.test(val)) { td.dataset.color = val; td.style.backgroundColor = val; td.innerText = ' '; }
+          else if ((typeof val === 'number' && !Number.isNaN(val)) || typeof val === 'string') td.innerText = String(val);
+        });
+      });
+      renderAttachIcon();
+    }
+    // Compute and update a row average
+    const computeRow=(tr)=>{
+      const cells=[...tr.querySelectorAll('td[contenteditable]')];
+      const numericIdx=cells.map((td,i)=> cols[i]?.type==='num' ? i : -1).filter(i=>i>=0);
+      const vals=cells.map(td=>parseFloat(td.innerText));
+      const sumW = numericIdx.reduce((a,i)=> a + (cols[i]?.w||0), 0);
+      let prom=0;
+      if (sumW>0){ prom = numericIdx.reduce((acc,i)=> acc + ((vals[i]||0) * (cols[i].w/sumW)), 0); }
+      const promCell=tr.querySelector('td.prom');
+      if (promCell) promCell.innerText = prom.toFixed(2);
+    };
+    const computeBadges=()=>{
+      const data=Storage.get(K.INSIGNIAS(grupo),[]);
+      const sumByName = data.reduce((acc,b)=>{ acc[b.alumno]=(acc[b.alumno]||0)+ (parseInt(b.puntos,10)||0); return acc; },{});
+      [...box.querySelectorAll('tbody tr')].forEach(tr=>{ const nombre=tr.cells[0]?.innerText?.trim()||''; const s=sumByName[nombre]||0; const cell=tr.querySelector('td.insig'); if(cell) cell.innerText = String(s); });
+    };
+    // Initial compute for all rows
+    [...box.querySelectorAll('tbody tr')].forEach(computeRow);
+    computeBadges();
+    // Save helper (manual + autosave use same path)
+    const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>{ const t=td.getAttribute('data-type'); if(t==='num'){ return (parseFloat(td.innerText)||0); } if(t==='color'){ return td.dataset.color || (td.innerText||'').trim(); } return (td.innerText||'').trim(); })); const data={grupo,alumnos,cols,vals,attachments,rubrics}; Storage.set(K.GBOOK(grupo),data); };
+    // Debounced autosave on edit
+    let autosaveTimer=null;
+    const scheduleAutosave=()=>{ 
+      if(autosaveTimer) clearTimeout(autosaveTimer);
+      setStatus('Guardando.');
+      autosaveTimer=setTimeout(()=>{ 
+        try{ save(); setStatus('Guardado'); }catch(_){ setStatus(''); }
+      },800);
+    };
+    // Listen edits to validate, recompute and autosave
+    box.querySelector('tbody')?.addEventListener('input',(e)=>{
+      const td = e.target?.closest('td[contenteditable]');
+      if (td) {
+        const t = td.getAttribute('data-type');
+        if (t==='num'){
+          const raw = parseFloat(td.innerText);
+          const invalid = !(Number.isFinite(raw)) || raw<0 || raw>100;
+          td.classList.toggle('error', invalid);
+          td.title = invalid ? 'Valor fuera de rango (0–100)' : '';
+        }
+      }
+      const tr = e.target?.closest('tr');
+      if (tr) computeRow(tr);
+      scheduleAutosave();
+    });
+    // Update badges when insignias change for this grupo
+    const onBadgesUpdate=(ev)=>{ if(ev?.detail?.grupo===grupo) computeBadges(); };
+    document.addEventListener('atemix:insignias:update', onBadgesUpdate);
+    // Save before leaving the page (avoid duplicate listeners across regenerations)
+    try{
+      if (window.__atemixGbBeforeUnload) {
+        window.removeEventListener('beforeunload', window.__atemixGbBeforeUnload);
+      }
+    }catch(_){}
+    window.__atemixGbBeforeUnload = ()=>{ try{ save(); }catch(_){} };
+    window.addEventListener('beforeunload', window.__atemixGbBeforeUnload, { once:false });
+    // Clean listener on regeneration
+    const updateHeaders=()=>{ const ths=[...box.querySelectorAll('thead th')]; cols.forEach((c,i)=>{ const th=ths[i+1]; if(th) th.textContent = `${c.t} (${c.w}%)${c.type!=='num'?` [${c.type}]`:''}`; }); };
+    act.querySelector('#gb-ajustar')?.addEventListener('click',()=>{ const sum=cols.filter(c=>c.type==='num').reduce((a,c)=>a+(c.w||0),0); if(sum<=0){ alert('No hay columnas numéricas con peso.'); return;} cols.forEach(c=>{ if(c.type==='num'){ c.w = +(c.w*100/sum).toFixed(2); } }); updateHeaders(); setStatus('Pesos ajustados'); setTimeout(()=>setStatus(''),1200); });
+    act.querySelector('#gb-guardar')?.addEventListener('click',()=>{ setStatus('Guardando.'); save(); setStatus('Guardado'); alert('Gradebook guardado'); }); 
+    act.querySelector('#gb-csv')?.addEventListener('click',()=>{ 
+      const csvSafe=(val)=>{ let s=String(val ?? ''); if(/^[=+\-@]/.test(s)) s="'"+s; s=s.replace(/\"/g,'""'); return '"'+s+'"'; };
+      let csv=csvSafe('Alumno')+','+cols.map(c=>csvSafe(c.t+(c.type!=='num'?` [${c.type}]`:''))).join(',')+','+csvSafe('Insignias')+','+csvSafe('Promedio')+'\n';
+      [...box.querySelectorAll('tbody tr')].forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const cells=[...tr.querySelectorAll('td[contenteditable]')]; const values=cells.map(td=>td.innerText.trim()); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const numericIdx=cells.map((td,i)=> cols[i]?.

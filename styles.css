@@ -159,6 +159,8 @@ body {
 #gb-report .card .actions { display:flex; gap:8px; }
 #gb-report table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 #gb-report th, #gb-report td { border: 1px solid var(--border); padding: 6px 8px; }
+.reporte-alumno .badge-uniforme { margin-right:6px; }
+.reporte-alumno h4 { margin: 10px 0 6px; }
 
 /* === Rúbrica modal UI === */
 .rubrica-modal .rubrica-content { display:block; overflow:auto; }
@@ -172,7 +174,8 @@ body {
   body * { visibility: hidden !important; }
   #gb-report, #gb-report * { visibility: visible !important; }
   #gb-report { position: static; inset: auto; background: transparent; padding: 0; }
-  #app-sidebar, #app-header, #gb-actions { display: none !important; }
+  #app-sidebar, #app-header, #gb-actions, button, .btn, .rubrica-toolbar { display: none !important; }
+  .reporte-alumno { page-break-after: always; break-after: page; background: #fff !important; color: #000 !important; }
   @page { size: A4; margin: 12mm; }
 }
 
