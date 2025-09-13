@@ -1,0 +1,114 @@
+Asunto: Solicitud de Desarrollo: Aplicación "atemix" - Cuaderno del Profesor Digital para la Nueva Escuela Mexicana (NEM)
+Estimado Programador/Equipo de Desarrollo,
+Necesitamos desarrollar una aplicación innovadora y robusta, a la que llamaremos "atemix". El objetivo es crear un cuaderno digital para docentes que emule la riqueza funcional y la usabilidad de iDoceo, pero completamente adaptada a las particularidades del sistema educativo mexicano y la filosofía de la Nueva Escuela Mexicana (NEM). Buscamos una herramienta que no solo gestione la evaluación, sino que apoye una práctica docente integral, contextualizada y motivadora para los maestros en México.
+Entorno de Desarrollo Requerido: El desarrollo se realizará utilizando Visual Studio Code como entorno de desarrollo principal. Esto implica la elección de frameworks y tecnologías que permitan un desarrollo eficiente y despliegue multiplataforma (iOS, Android, Web, y/o Desktop, según el alcance que definamos inicialmente).
+I. Aspectos Fundamentales de la Replicación de iDoceo (Funcionalidades Clave a Mantener):
+"atemix" debe replicar las siguientes características esenciales de iDoceo, que lo hacen una herramienta tan potente:
+1. Cuaderno de Calificaciones y Gestión de Alumnos:
+    ◦ Gestión de un número ilimitado de clases y estudiantes.
+    ◦ Tipos de notas flexibles y personalizables: soporte para notas numéricas, de texto, iconos, colores o combinaciones. El docente debe poder definir sus propios sistemas de calificación.
+    ◦ Columnas ilimitadas para diferentes instrumentos de evaluación, con editores rápidos y configurables para agilizar la entrada de datos.
+    ◦ Capacidad de adjuntar recursos multimedia (fotos, grabaciones de audio y video) y archivos a cualquier celda, alumno o clase para un seguimiento integral del progreso del alumnado.
+    ◦ Organización visual de los datos mediante pestañas configurables dentro del cuaderno.
+    ◦ Funcionalidades de cálculo avanzadas: implementación de promedios ponderados, sumas, contadores de iconos, coeficientes y fórmulas personalizadas, esenciales para la flexibilidad evaluativa del docente.
+2. Rúbricas:
+    ◦ Creación y edición de rúbricas personalizadas con distintos niveles de logro y criterios específicos.
+    ◦ Funcionalidades para importar y exportar rúbricas (en formatos CSV/XLS) y, si es posible, una biblioteca de rúbricas compartidas.
+    ◦ Configuración de métodos de cálculo (Suma, Promedio, Porcentaje) y la posibilidad de asignar pesos a filas y columnas dentro de la rúbrica.
+    ◦ Capacidad de asociar las filas de las rúbricas con elementos curriculares (criterios, competencias).
+3. Planificador (Planner) y Diario:
+    ◦ Herramientas para organizar programaciones de clases, lecciones y eventos en vistas diarias y semanales.
+    ◦ Integración con calendarios externos como Google Calendar e iCal.
+    ◦ Posibilidad de adjuntar recursos (archivos, imágenes, notas a mano, enlaces) directamente a las lecciones planificadas.
+4. Plano de Asientos:
+    ◦ Creación de múltiples planos de asientos por clase (hasta 10), con fondos personalizables y la capacidad de realizar dibujos a mano sobre ellos.
+    ◦ Funciones de toma de asistencia rápida y edición de datos directamente en el plano.
+    ◦ Generador de grupos y selector de alumnos al azar.
+5. Gestión de Recursos:
+    ◦ Sistema integral para el almacenamiento y organización de diversos tipos de archivos: PDFs, documentos, audio, video, imágenes y enlaces, accesibles desde cualquier parte de la aplicación.
+    ◦ Lector de PDF integrado.
+6. Informes:
+    ◦ Generación de informes personalizables para alumnos (incluyendo resúmenes de notas, asistencia y datos personales) en formatos PDF, XLS y TXT.
+    ◦ Posibilidad de envío automatizado de informes por correo electrónico.
+7. Gamificación (Insignias Digitales):
+    ◦ Un sistema robusto para crear y asignar insignias digitales (análogo a Badge Maker) con combinaciones ilimitadas de formas, iconos, cintas y texto personalizable.
+    ◦ Asignación de puntos asociados a las insignias (positivos o negativos).
+    ◦ Las insignias deben registrarse en la ficha del alumno y se debe poder mostrar la puntuación total de las insignias en una columna del cuaderno (requerirá una función similar a BADGEMAKER()).
+    ◦ Diseño de insignias que puedan ser acumulables y que reconozcan diversos logros: esfuerzo, participación, cumplimiento de objetivos, valores y habilidades transversales.
+8. Corrección Automática de Exámenes (análogo a Grade Scanner):
+    ◦ Una herramienta que permita escanear y corregir exámenes tipo test automáticamente usando la cámara del dispositivo, con importación de los resultados directamente al cuaderno principal de "atemix".
+    ◦ Creación de clases y estudiantes, con opciones de importar desde el cuaderno principal de "atemix" o Google Classroom.
+    ◦ Configuración flexible de respuestas correctas y penalizaciones por errores.
+    ◦ Generación de estadísticas y análisis detallados de los resultados y preguntas más falladas.
+9. Sincronización y Acceso Offline:
+    ◦ Funcionalidad robusta para trabajar completamente offline, garantizando que el docente pueda usar la aplicación sin conexión a internet.
+    ◦ Un sistema de sincronización automática de datos entre dispositivos que se active cuando haya conexión a internet (utilizando un backend propio o servicios de nube como Google Drive/Dropbox).
+10. Importación y Exportación de Datos:
+    ◦ Soporte para importar y exportar datos de alumnos, clases, rúbricas y elementos curriculares en formatos comunes como XLS/CSV/PDF.
+11. Integración con Google Classroom:
+    ◦ Capacidad para importar listas de alumnos y clases desde Google Classroom.
+    ◦ Posibilidad de exportar notas y rúbricas a Google Classroom.
+II. Toque Mexicano y Adaptación a la Nueva Escuela Mexicana (NEM):
+Aquí es donde "atemix" se diferenciará y aportará un valor único para el contexto educativo de México. El programador debe considerar los principios de la NEM:
+1. Integración Curricular de la NEM:
+    ◦ Desarrollar un sistema para cargar y gestionar los elementos curriculares específicos de la Nueva Escuela Mexicana: Unidades de Aprendizaje Curricular (UACs) y las Progresiones de Aprendizaje [N/A, inferido de la NEM]. Esto debe ser similar a la integración de la LOMLOE en iDoceo, que gestiona criterios, competencias, descriptores y saberes.
+    ◦ Crear una "Biblioteca Online Curricular Mexicana" que contenga los currículos oficiales de las distintas entidades federativas de México, permitiendo a los docentes descargarlos o importar sus propios archivos Excel con una estructura definida.
+    ◦ Permitir el establecimiento de relaciones jerárquicas entre UACs, progresiones, objetivos de aprendizaje y los ocho principios formativos de la NEM (Identidad con México, Responsabilidad Ciudadana, Respeto a la Dignidad Humana, Interculturalidad Crítica, Promoción de la Cultura de la Paz, Honestidad, Participación en la Transformación de la Sociedad, Respeto por la Naturaleza).
+    ◦ Asignación Contextualizada: La aplicación debe permitir asignar UACs, progresiones y otros elementos curriculares a las columnas del cuaderno y a las rúbricas, facilitando una evaluación pertinente y situada.
+    ◦ Desarrollo de "widgets" o resúmenes específicos para la NEM que muestren el progreso del alumnado en relación con las UACs, los principios de la NEM y el perfil de egreso.
+2. Evaluación Integral y Formativa con Enfoque Humanista:
+    ◦ Soporte robusto para múltiples tipos de evaluación (diagnóstica, formativa, sumativa), priorizando los procesos de aprendizaje y las habilidades socioemocionales sobre la mera memorización de contenidos.
+    ◦ Instrumentos de evaluación que puedan reflejar la contextualización y el sentido lúdico de las actividades pedagógicas propuestas por la NEM.
+    ◦ Expedientes Digitales de Alumnos: Fichas de alumno que permitan registrar no solo notas, sino también intereses, habilidades, aspiraciones, trabajos escolares, contexto familiar y el progreso en sus trayectorias formativas, para una evaluación más integral y humanista.
+    ◦ Integración de herramientas diagnósticas para la NEM, como cuestionarios KPSI o de redes sistémicas, para identificar conocimientos previos y modos de razonamiento que permitan ajustar la enseñanza.
+    ◦ Informes para padres y tutores que incluyan aspectos cualitativos y de progreso en competencias, más allá de solo calificaciones numéricas.
+    ◦ Funcionalidades que apoyen la autoevaluación y coevaluación de los alumnos, esenciales para la evaluación formadora y la autorregulación de los aprendizajes.
+3. Gamificación y Reconocimiento con Sello Mexicano:
+    ◦ Las insignias de "atemix" deben poder reconocer logros vinculados directamente con los principios y valores de la NEM (ej., "Insignia de Interculturalidad", "Insignia de Responsabilidad Ciudadana"), así como el desarrollo de habilidades blandas o socioemocionales como liderazgo, empatía, colaboración, pensamiento crítico, creatividad y autogestión.
+    ◦ Posibilidad de crear insignias específicas para la revalorización del magisterio, reconociendo la formación continua y el desarrollo profesional de los docentes mexicanos.
+4. Colaboración y Comunicación Comunitaria:
+    ◦ Funcionalidades que faciliten la interacción y vinculación entre la escuela y la comunidad inmediata, un pilar fundamental de la NEM.
+    ◦ Herramientas para la gestión y seguimiento de Proyectos Escolares Comunitarios (PEC) y otras actividades que involucren el trabajo colaborativo en grupos.
+5. Adaptabilidad a la Realidad Mexicana:
+    ◦ Diseñar la aplicación para que sea robusta en modo offline, reconociendo que no todas las escuelas en México tienen acceso constante a internet [N/A, conversación previa]. La sincronización debe ser prioritaria cuando la conectividad esté disponible.
+    ◦ La interfaz y los contenidos deben ser adaptables a la diversidad cultural y lingüística de las diversas regiones del país.
+III. Consideraciones Técnicas y Metodología de Desarrollo (Usando VS Code):
+El programador debe considerar lo siguiente para el desarrollo:
+1. Elección del Framework Multiplataforma:
+    ◦ Dado que iDoceo es nativo de Apple, para una "versión mexicana" que sea multiplataforma y utilice VS Code, se recomendaría explorar y justificar el uso de:
+        ▪ Flutter (Dart) o React Native (JavaScript/TypeScript) para el desarrollo móvil (iOS y Android), ambos compatibles con VS Code y con alta reutilización de código y buen rendimiento.
+        ▪ Para una aplicación de escritorio (Windows/macOS/Linux), Electron (JavaScript/TypeScript) si se prefiere una base web, o soluciones nativas con Kotlin Multiplatform o MAUI (.NET) si se busca mayor integración con el sistema operativo.
+    ◦ La elección debe basarse en la capacidad de replicar la UI/UX fluida de iDoceo y la eficiencia en el mantenimiento.
+2. Arquitectura de Backend y Base de Datos:
+    ◦ Diseñar una arquitectura de backend escalable y segura (ej., Node.js con Express, Python con Django/Flask) desplegada en servicios de nube (AWS, Google Cloud, Azure) para gestionar usuarios, datos curriculares y la sincronización.
+    ◦ Base de datos:
+        ▪ Local: Implementación de una base de datos local robusta (ej., SQLite, Realm para React Native, Drift/Isar para Flutter) para garantizar la funcionalidad offline completa.
+        ▪ Nube: Uso de una base de datos en la nube (ej., PostgreSQL para datos relacionales, MongoDB/Firestore para datos semi-estructurados como el currículo) para la sincronización y el almacenamiento seguro y centralizado de datos.
+    ◦ Autenticación y Autorización: Implementar un sistema seguro de gestión de usuarios (docentes, alumnos, administradores) con roles y permisos, con posible integración de autenticación de terceros (Google/Microsoft).
+3. Diseño de Datos Curriculares para la NEM:
+    ◦ Diseñar una estructura de datos flexible y escalable para las UACs, progresiones, objetivos, criterios de evaluación y los principios de la NEM. Esto requerirá un modelado cuidadoso para permitir relaciones jerárquicas complejas y la aplicación de ponderaciones, similar a cómo iDoceo maneja la LOMLOE.
+    ◦ Desarrollar parsers para importar estos datos desde archivos Excel (.xls/.xlsx) o CSV con un formato predefinido, y una interfaz para que los usuarios puedan crear, editar y compartir sus propias plantillas curriculares.
+4. Interfaz de Usuario (UI/UX):
+    ◦ Prestar especial atención a la fluidez, reactividad y la intuición de la interfaz, emulando la experiencia de usuario altamente valorada de iDoceo.
+    ◦ El diseño debe ser limpio y personalizable, con opciones de temas, iconos y colores para ofrecer ese "toque mexicano" sutil y funcional, reflejando la cultura y los valores de la NEM.
+    ◦ Implementación de gestos táctiles intuitivos (doble tap para editar, tocar y mantener para opciones adicionales).
+5. Rendimiento y Escalabilidad:
+    ◦ Optimizar la aplicación para un rendimiento fluido y rápido, incluso al manejar grandes volúmenes de datos y en dispositivos de gama media, que son comunes en diversos contextos educativos.
+    ◦ La arquitectura debe ser modular y escalable para permitir futuras expansiones y la adición de nuevas características específicas para México.
+6. Seguridad y Privacidad de Datos:
+    ◦ Implementar las mejores prácticas de seguridad, incluyendo cifrado de datos sensibles de los estudiantes tanto en el dispositivo como en la nube.
+    ◦ Garantizar el cumplimiento estricto de la legislación mexicana de protección de datos personales.
+    ◦ Manejo cuidadoso y seguro de la importación masiva de datos de alumnos.
+7. Pruebas Rigurosas:
+    ◦ Establecer un plan de pruebas exhaustivo: pruebas unitarias, de integración, de interfaz de usuario, de rendimiento y de seguridad.
+    ◦ Realizar pruebas de usuario con docentes mexicanos en diferentes contextos educativos para validar la pertinencia y funcionalidad de "atemix" con la NEM.
+8. APIs e Integraciones Externas:
+    ◦ Desarrollar APIs robustas para interactuar con Google Classroom, servicios de correo electrónico y otras posibles plataformas educativas locales o sistemas de gestión escolar que sean relevantes en México.
+9. Gestión de Archivos Interna:
+    ◦ Implementar un sistema de gestión de archivos interno que maneje eficientemente la carga, almacenamiento y visualización de diversos tipos de medios.
+10. Herramientas de VS Code:
+    ◦ Hacer uso de las extensiones relevantes para el framework elegido (ej., extensiones de Flutter/Dart o React Native/TypeScript).
+    ◦ Utilizar las herramientas integradas de VS Code para depuración, formateo de código, control de versiones (Git), y potencialmente integración con pipelines de CI/CD para automatizar el despliegue.
+Expectativas Finales:
+"atemix" no debe ser solo una réplica técnica de iDoceo; es una adaptación cultural, pedagógica y funcional profunda que busca empoderar a los docentes mexicanos, ofreciéndoles una herramienta poderosa para navegar los retos y oportunidades que presenta la Nueva Escuela Mexicana, fomentando una educación más crítica, humanista, comunitaria e inclusiva.
+Agradecemos su atención y esperamos su propuesta de desarrollo detallada para hacer realidad "atemix".

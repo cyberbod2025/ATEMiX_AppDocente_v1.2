@@ -1,0 +1,1 @@
+reportEl.innerHTML = `<div class=\"card\"><header><h3>Aplicar rúbrica · ${rub.nombre}</h3><div class=\"actions\"><button id=\"rb-apply-cancel\" class=\"btn\">Cancelar</button> <button id=\"rb-apply-ok\" class=\"btn btn-s

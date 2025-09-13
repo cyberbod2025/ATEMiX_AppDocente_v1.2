@@ -1,6 +1,5 @@
 // Gradebook NEM mínimo: alumnos, actividades con peso, promedio, CSV
 import {Storage,K} from '../services/storage.js';
-import { calcularScoreRubrica } from './rubricas.js';
 export function initGradebook(){
   const $=(q)=>document.querySelector(q); const v=$('#view-gradebook'); if(!v) return;
   const gSel=$('#gb-grupo'); const taAl=$('#gb-alumnos'); const taCols=$('#gb-actividades');
@@ -70,7 +69,6 @@ export function initGradebook(){
     const saved = Storage.get(K.GBOOK(grupo));
     // Adjuntos por celda
     let attachments = (saved && saved.attachments) ? saved.attachments : {};
-    let rubrics = (saved && saved.rubrics) ? saved.rubrics : {};
     const keyFor=(ri,ci)=>`${ri}-${ci}`;
     const hasAttach=(ri,ci)=> Array.isArray(attachments[keyFor(ri,ci)]) && attachments[keyFor(ri,ci)].length>0;
     const renderAttachIcon=()=>{ [...box.querySelectorAll('tbody tr')].forEach((tr,ri)=>{ [...tr.querySelectorAll('td[contenteditable]')].forEach((td,ci)=>{ const mark = td.querySelector('.gb-clip'); if(mark) mark.remove(); if(hasAttach(ri,ci)){ const m=document.createElement('span'); m.className='gb-clip'; m.textContent='📎'; m.style.float='right'; m.style.opacity='0.8'; m.title = `${attachments[keyFor(ri,ci)].length} adjunto(s)`; td.appendChild(m); } }); }); };
@@ -107,7 +105,7 @@ export function initGradebook(){
     [...box.querySelectorAll('tbody tr')].forEach(computeRow);
     computeBadges();
     // Save helper (manual + autosave use same path)
-    const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>{ const t=td.getAttribute('data-type'); if(t==='num'){ return (parseFloat(td.innerText)||0); } if(t==='color'){ return td.dataset.color || (td.innerText||'').trim(); } return (td.innerText||'').trim(); })); const data={grupo,alumnos,cols,vals,attachments,rubrics}; Storage.set(K.GBOOK(grupo),data); };
+    const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>{ const t=td.getAttribute('data-type'); if(t==='num'){ return (parseFloat(td.innerText)||0); } if(t==='color'){ return td.dataset.color || (td.innerText||'').trim(); } return (td.innerText||'').trim(); })); const data={grupo,alumnos,cols,vals,attachments}; Storage.set(K.GBOOK(grupo),data); };
     // Debounced autosave on edit
     let autosaveTimer=null;
     const scheduleAutosave=()=>{ 
@@ -171,84 +169,6 @@ export function initGradebook(){
       const blob=new Blob([html],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gradebook_${grupo}.xls`; a.click();
     });
 
-    // Inserta botón de Rúbrica (matriz) si no existe
-    try{ if(!act.querySelector('#gb-apply-rubrica-mx')){ const mx=document.createElement('button'); mx.className='btn'; mx.id='gb-apply-rubrica-mx'; mx.textContent='Rúbrica (matriz)'; const ref=act.querySelector('#gb-reporte-clase'); if(ref){ act.insertBefore(mx, ref); } else { act.appendChild(mx); } } }catch(_){ }
-    // Aplicar rúbrica con matriz por criterio
-    act.querySelector('#gb-apply-rubrica-mx')?.addEventListener('click',()=>{
-      const rubs = (Storage.get(K.RUBRICAS,[])||[]);
-      if(!rubs.length){ alert('No hay rúbricas guardadas. Crea una en la sección Rúbricas.'); return; }
-      const rubNames = rubs.map((r,i)=> `${i+1}. ${r.nombre}`).join('\n');
-      const rIdxRaw = prompt(`Selecciona rúbrica (número):\n${rubNames}`, '1');
-      const rIdx = (parseInt(rIdxRaw||'1',10)-1);
-      const rub = rubs[rIdx]; if(!rub){ alert('Selección inválida'); return; }
-      const colRaw = prompt(`¿Qué columna aplicar? (1-${cols.length})`, '1');
-      const cIdx = parseInt(colRaw||'1',10)-1; if(!(cIdx>=0 && cIdx<cols.length)){ alert('Columna inválida'); return; }
-      const criterios = rub.criterios||[]; const niveles = rub.niveles||[];
-      if(!criterios.length || !niveles.length){ alert('La rúbrica debe tener criterios y niveles.'); return; }
-      const pc = Array.isArray(rub.pesos_criterios)&&rub.pesos_criterios.length===criterios.length ? rub.pesos_criterios.map(x=>parseFloat(x)||1): Array.from({length:criterios.length},()=>1);
-      const pn = Array.isArray(rub.pesos_niveles)&&rub.pesos_niveles.length===niveles.length ? rub.pesos_niveles.map(x=>parseFloat(x)||1): Array.from({length:niveles.length},(_,i)=>i+1);
-      const getScale=(crit)=>{ const s=(crit||'').toLowerCase(); if(s.includes('0-10')||s.includes('scale=10')||s.includes('escala=10')) return '0-10'; return '0-100'; };
-      const isHol = (rub.metodo||'').toLowerCase().includes('hol');
-      const rowsMx = alumnos.map((a,ri)=>{
-        const prevSel = rubrics?.[cIdx]?.sel?.[ri] || [];
-        if(isHol){
-          const opts = niveles.map((lv,li)=>`<option value=\"${li}\" ${prevSel[0]===li?'selected':''}>${lv}</option>`).join('');
-          const body = `<label>Nivel global</label> <select data-ri=\"${ri}\" data-cr=\"0\">${opts}</select>`;
-          return `<details ${ri<2?'open':''}><summary>${a}</summary><div class=\"rubrica-grid\">${body}</div></details>`;
-        } else {
-          const opts = (ci)=> niveles.map((lv,li)=>`<option value=\"${li}\" ${prevSel[ci]===li?'selected':''}>${lv}</option>`).join('');
-          const body = criterios.map((cr,ci)=>`<tr><td>${cr}</td><td><select data-ri=\"${ri}\" data-cr=\"${ci}\">${opts(ci)}</select></td></tr>`).join('');
-          return `<details ${ri<2?'open':''}><summary>${a}</summary><table><thead><tr><th>Criterio</th><th>Nivel</th></tr></thead><tbody>${body}</tbody></table></details>`;
-        }
-      }).join('');
-      reportEl.innerHTML = `<div class=\"card\"><header><h3>Aplicar rúbrica · ${rub.nombre}</h3><div class=\"actions\"><button id=\"rb-apply-cancel\" class=\"btn\">Cancelar</button> <button id=\"rb-apply-ok\" class=\"btn btn-secondary\">Calcular y aplicar</button></div></header><div><p>Columna: <strong>${cols[cIdx].t}</strong></p>${rowsMx}</div></div>`;
-      reportEl.classList.remove('hidden');
-      reportEl.querySelector('#rb-apply-cancel')?.addEventListener('click',()=> reportEl.classList.add('hidden'));
-      try{
-        const card = reportEl.querySelector('.card');
-        const afterHeader = card?.querySelector('header')?.nextElementSibling;
-        if(afterHeader && !afterHeader.classList.contains('rubrica-toolbar')){
-          const uniC = !(Array.isArray(rub.pesos_criterios) && rub.pesos_criterios.length===criterios.length);
-          const uniN = !(Array.isArray(rub.pesos_niveles) && rub.pesos_niveles.length===niveles.length);
-          const badges = (uniC||uniN) ? `<span class="badge-uniforme">${uniC?'Criterios':''}${uniC&&uniN?' · ':''}${uniN?'Niveles':''}: Uniforme</span>` : '';
-          const toolbar = document.createElement('div');
-          toolbar.className='rubrica-toolbar';
-          toolbar.innerHTML = `<div>${badges}</div><div class="rubrica-nav"><button id="rb-prev" class="btn">Anterior</button><button id="rb-next" class="btn">Siguiente</button><button id="rb-copy" class="btn">Copiar a todos</button><button id="rb-clear" class="btn">Limpiar</button></div><div><strong>Columna:</strong> ${cols[cIdx].t}</div>`;
-          card?.insertBefore(toolbar, afterHeader);
-          const details = [...reportEl.querySelectorAll('details')];
-          let currentIdx = Math.max(0, details.findIndex(d=>d.hasAttribute('open')));
-          const openAt=(idx)=>{ details.forEach((d,i)=>{ if(i===idx){ d.setAttribute('open',''); d.scrollIntoView({block:'nearest'}); } else { d.removeAttribute('open'); } }); currentIdx=idx; };
-          toolbar.querySelector('#rb-prev')?.addEventListener('click',()=> openAt((currentIdx-1+details.length)%details.length));
-          toolbar.querySelector('#rb-next')?.addEventListener('click',()=> openAt((currentIdx+1)%details.length));
-          toolbar.querySelector('#rb-copy')?.addEventListener('click',()=>{ const src = details[currentIdx]; if(!src) return; const ri = currentIdx; const srcSels = [...src.querySelectorAll(`select[data-ri=\"${ri}\"]`)]; const vals = srcSels.map(s=>s.value); details.forEach((d,i)=>{ if(i===ri) return; const dst = [...d.querySelectorAll(`select[data-ri=\"${i}\"]`)]; dst.forEach((s,ci)=>{ s.value = vals[ci]||s.value; }); }); });
-          toolbar.querySelector('#rb-clear')?.addEventListener('click',()=>{ const d = details[currentIdx]; if(!d) return; const sel = [...d.querySelectorAll('select[data-ri]')]; sel.forEach(s=> s.value = '0'); });
-          const onKey=(ev)=>{ if(ev.key==='Escape'){ reportEl.classList.add('hidden'); document.removeEventListener('keydown', onKey); } else if(ev.key==='Enter'){ reportEl.querySelector('#rb-apply-ok')?.click(); } };
-          document.addEventListener('keydown', onKey);
-        }
-      }catch(_){ }
-      reportEl.querySelector('#rb-apply-ok')?.addEventListener('click',()=>{
-        const selByRow = [];
-        alumnos.forEach((_,ri)=>{
-          const sels = [...reportEl.querySelectorAll(`select[data-ri=\\\"${ri}\\\"]`)];
-          const selLevels = sels.map(s=> parseInt(s.value,10)||0);
-          selByRow[ri] = selLevels;
-          const scale = getScale(cols[cIdx]?.crit);
-          const res = calcularScoreRubrica({ criterios, niveles, pesos_criterios: pc, pesos_niveles: pn, metodo: (rub.metodo||'promedio_ponderado'), objetivo: rub.objetivo }, selLevels, rub.metodo||'promedio_ponderado', scale);
-          let val = res.score100;
-          if(scale==='0-10') val = +(val/10).toFixed(1);
-          const td = box.querySelector(`td[contenteditable][data-a=\\\"${ri}\\\"][data-c=\\\"${cIdx}\\\"]`);
-          if(td){ td.innerText = val.toFixed(2); td.classList.remove('error'); }
-        });
-        const entry = { nombre: rub.nombre, criterios, niveles, pesos_criterios: pc, pesos_niveles: pn, metodo: rub.metodo||'promedio_ponderado', sel: selByRow, escala: getScale(cols[cIdx]?.crit), ts: Date.now() };
-        const prev = rubrics[cIdx];
-        if(prev && Array.isArray(prev.hist)) prev.hist.unshift(entry); else rubrics[cIdx] = { latest: entry, hist:[entry] };
-        // Limitar historial a 5
-        if(rubrics[cIdx].hist.length>5) rubrics[cIdx].hist = rubrics[cIdx].hist.slice(0,5);
-        [...box.querySelectorAll('tbody tr')].forEach(computeRow);
-        scheduleAutosave(); save();
-        reportEl.classList.add('hidden');
-      });
-    });
     // Adjuntos: estado y acciones
     let currentCell=null;
     box.querySelector('tbody')?.addEventListener('focusin',(e)=>{ const td=e.target?.closest('td[contenteditable]'); if(td) currentCell=td; }, true);
@@ -263,7 +183,7 @@ export function initGradebook(){
     if (!document.querySelector('#gb-report')){
       const div=document.createElement('div'); div.id='gb-report'; div.className='hidden'; document.body.appendChild(div);
     }
-    act.innerHTML += ' <button class="btn" id="gb-reporte">Reporte por alumno</button> <button class="btn" id="gb-reporte-det">Reporte del alumno…</button> <button class="btn btn-secondary" id="gb-print">Imprimir/PDF</button>';
+    act.innerHTML += ' <button class="btn" id="gb-reporte">Reporte por alumno</button> <button class="btn btn-secondary" id="gb-print">Imprimir/PDF</button>';
     const reportEl = document.querySelector('#gb-report');
     const buildReport=(alumno)=>{
       const idx = alumnos.indexOf(alumno);
@@ -285,12 +205,6 @@ export function initGradebook(){
       if(!alumno) return; buildReport(alumno);
     });
     act.querySelector('#gb-print')?.addEventListener('click',()=>{ if(reportEl && !reportEl.classList.contains('hidden')) window.print(); else alert('Abre primero un Reporte por alumno.'); });
-    // Reporte detallado
-    act.querySelector('#gb-reporte-det')?.addEventListener('click',()=>{ 
-      const nombre = prompt('Alumno para reporte detallado:', alumnos[0]||'');
-      if(!nombre) return; const idx = alumnos.indexOf(nombre); if(idx<0){ alert('Alumno no encontrado'); return; }
-      import('./reportes.js').then(m=>{ try{ m.imprimirReporteAlumno({grupo, alumno_index: idx}); }catch(e){ alert('No se pudo generar el reporte'); } });
-    });
     act.querySelector('#gb-reporte-clase')?.addEventListener('click',()=>{
       const rows=[...box.querySelectorAll('tbody tr')];
       const body=rows.map(tr=>{ const nombre=tr.cells[0].innerText.trim(); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const prom=tr.querySelector('td.prom')?.innerText.trim()||'0.00'; return `<tr><td>${nombre}</td><td>${insig}</td><td>${prom}</td></tr>`; }).join('');
@@ -345,3 +259,4 @@ export function initGradebook(){
     box.querySelector('tbody')?.addEventListener('click',(e)=>{ const td=e.target?.closest('td[contenteditable]'); if(!td) return; const t=td.getAttribute('data-type'); if(t==='icon' || t==='color'){ e.preventDefault(); showPalette(td); }});
   });
 }
+
