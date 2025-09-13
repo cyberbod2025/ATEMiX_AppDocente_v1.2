@@ -1,6 +1,5 @@
 // AtemiMX · Planeación (planner semanal + resumen)
 import {Storage, K} from '../services/storage.js';
-import { initProgreso } from './progreso.js';
 export function initPlaneacion(){
   const $ = (q)=>document.querySelector(q);
   const view = $('#view-planeacion'); if(!view) return;
@@ -31,8 +30,6 @@ export function initPlaneacion(){
   const prevBtn = plannerEl.querySelector('#pl-prev');
   const nextBtn = plannerEl.querySelector('#pl-next');
   const clearBtn = plannerEl.querySelector('#pl-clear');
-  let icalBtn = plannerEl.querySelector('#pl-ical');
-  try{ if(!icalBtn){ const ctr=plannerEl.querySelector('#pl-controls')||plannerEl; const b=document.createElement('button'); b.className='btn'; b.id='pl-ical'; b.textContent='Exportar iCal'; b.title='Exportar iCal (semana)'; ctr.appendChild(b); icalBtn=b; } }catch(_){ }
 
   const dayNames = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
   const addDays=(d,days)=>{ const t=new Date(d); t.setDate(t.getDate()+days); return t; };
@@ -103,7 +100,6 @@ export function initPlaneacion(){
   prevBtn?.addEventListener('click',()=>{ const d=new Date(startInput.value||new Date()); const prev=addDays(mondayOf(d), -7); startInput.value=fmt(prev); renderWeek(prev); });
   nextBtn?.addEventListener('click',()=>{ const d=new Date(startInput.value||new Date()); const next=addDays(mondayOf(d), 7); startInput.value=fmt(next); renderWeek(next); });
   clearBtn?.addEventListener('click',()=>{ const d=new Date(startInput.value||new Date()); const mon=mondayOf(d); const p=loadPlan(); const k=weekKey(mon); if(p.planner) delete p.planner[k]; savePlan(p); renderWeek(mon); });
-  icalBtn?.addEventListener('click',()=>{ const d=new Date(startInput.value||new Date()); const mon=mondayOf(d); document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'start', title:'Exportando iCal'}})); const p=loadPlan(); const k=weekKey(mon); const w=p.planner?.[k]; if(!w){ alert('No hay eventos en esta semana.'); document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'error', message:'Semana vacía'}})); return;} const pad=(n)=> String(n).padStart(2,'0'); const fmtDate=(dt)=> `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`; const fmtDT=(dt)=> `${fmtDate(dt)}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`; const toDate=(dayIdx,timeStr)=>{ const base=addDays(mon,dayIdx); const [hh,mm]=(timeStr||'07:30').split(':').map(x=>parseInt(x,10)||0); const dt=new Date(base); dt.setHours(hh,mm,0,0); return dt; }; let ics='BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//AtemiMX//Planner//ES\n'; let count=0; w.days.forEach((arr,di)=>{ (arr||[]).forEach((it,j)=>{ const dt=toDate(di,it.time||'07:30'); const uid=`${fmtDT(dt)}-${di}-${j}@atemix`; ics+='BEGIN:VEVENT\n'; ics+=`UID:${uid}\n`; ics+=`DTSTAMP:${fmtDT(new Date())}\n`; ics+=`DTSTART:${fmtDT(dt)}\n`; ics+=`SUMMARY:${(it.title||'Clase').replace(/\n/g,' ')}\n`; if(it.link) ics+=`URL:${it.link}\n`; ics+='END:VEVENT\n'; count++; if(count%3===0) document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'update', percent: Math.min(95, Math.round((count/50)*100)), message:`Eventos: ${count}`}})); }); }); ics+='END:VCALENDAR\n'; const blob=new Blob([ics],{type:'text/calendar'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`planner_${fmtDate(mon)}.ics`; a.click(); document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'done', message:'iCal generado'}})); });
   plannerEl.querySelector('#pl-copy')?.addEventListener('click',()=>{ const d=new Date(startInput.value||new Date()); const mon=mondayOf(d); const next=addDays(mon,7); const p=loadPlan(); const k=weekKey(mon); const w=p.planner?.[k]; if(!w){ alert('No hay semana para copiar.'); return;} p.planner = p.planner||{}; p.planner[weekKey(next)] = JSON.parse(JSON.stringify(w)); savePlan(p); alert('Semana copiada a la próxima.'); });
 
   btnExport?.addEventListener('click', ()=>{
@@ -115,7 +111,6 @@ export function initPlaneacion(){
   renderResumen();
   initWeek();
   document.addEventListener('atemix:onboarding:ready', ()=>{ renderResumen(); initWeek(); });
-  try{ initProgreso(); }catch(_){ }
 }
 
 // Cargar módulo de asientos de forma dinámica e inicializar
@@ -124,3 +119,4 @@ try{ import('./asientos.js').then(m=>{ try{ m.initAsientos(); }catch(_){} }).cat
 try{ import('./backup.js').then(m=>{ try{ m.initBackup(); }catch(_){} }).catch(()=>{}); }catch(_){ }
 // Cargar utilidades de aula
 try{ import('./aula.js').then(m=>{ try{ m.initAula(); }catch(_){} }).catch(()=>{}); }catch(_){ }
+
