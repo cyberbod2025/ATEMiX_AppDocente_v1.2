@@ -12,7 +12,7 @@ export function initGradebook(){
     const cols=(taCols.value||'').split(/\n/).map(l=>{const [t,p,c]=l.split(',');return{t:(t||'Actividad').trim(),w:parseFloat(p||0),crit:(c||'')}}).filter(x=>x.t);
     const wSum=cols.reduce((a,b)=>a+b.w,0); if(Math.abs(wSum-100)>0.1) alert('Advertencia: los pesos no suman 100%');
     let html='<table><thead><tr><th>Alumno</th>'+cols.map(c=>`<th title="${c.crit}">${c.t} (${c.w}%)</th>`).join('')+'<th>Promedio</th></tr></thead><tbody>';
-    alumnos.forEach((a,i){ html+=`<tr><td>${a}</td>`+cols.map((c,j)=>`<td contenteditable data-a="${i}" data-c="${j}"></td>`).join('')+'<td class="prom"></td></tr>`});
+    alumnos.forEach((a,i)=>{ html+=`<tr><td>${a}</td>`+cols.map((c,j)=>`<td contenteditable data-a="${i}" data-c="${j}"></td>`).join('')+'<td class="prom"></td></tr>`});
     html+='</tbody></table>'; box.innerHTML=html; act.style.display='flex';
     act.innerHTML='<button class="btn btn-secondary" id="gb-csv">Exportar CSV</button> <button class="btn" id="gb-guardar">Guardar</button>';
     const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>parseFloat(td.innerText)||0)); const data={grupo,alumnos,cols,vals}; Storage.set(K.GBOOK(grupo),data); alert('Gradebook guardado');};
