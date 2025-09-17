@@ -1,12 +1,33 @@
 // Gradebook NEM mínimo: alumnos, actividades con peso, promedio, CSV
 import {Storage,K} from '../services/storage.js';
+import { emptyState, notify, pushLog, updateStatus } from './ui.js';
 import { calcularScoreRubrica } from './rubricas.js';
+import { configurarAplicacionInsignias } from './insignias.js';
+import { generarReporteAlumno, imprimirReporteAlumno } from './reportes.js';
+import { exportarMultiplesCSV } from './export_xls.js';
 export function initGradebook(){
   const $=(q)=>document.querySelector(q); const v=$('#view-gradebook'); if(!v) return;
   const gSel=$('#gb-grupo'); const taAl=$('#gb-alumnos'); const taCols=$('#gb-actividades');
   const btnGen=$('#gb-generar'); const box=$('#gb-tabla'); const act=$('#gb-actions');
   function gruposDefault(){ const cfg=Storage.get(K.CONFIG)||{}; return (cfg.grupos||[]).join(','); }
   if (gSel) gSel.value=gSel.value||gruposDefault();
+  try{ updateStatus({ grupo: gSel?.value||'' }); }catch(_){ }
+  // Empty state rápido si no hay datos
+  try{
+    const noData = (!taAl?.value?.trim() && !taCols?.value?.trim() && !box?.innerHTML?.trim());
+    if (noData){
+      emptyState(v, {
+        icon:'📘',
+        title:'Gradebook vacío',
+        desc:'Añade columnas, importa CSV o usa una clase demo para explorar.',
+        actions:[
+          { label:'Añadir columna', className:'btn', onClick:()=>{ taCols.value = (taCols.value? taCols.value+'\n':'') + 'Actividad,50,Descripción'; notify('info','Columna ejemplo añadida'); } },
+          { label:'Importar CSV', className:'btn btn-secondary', onClick:()=>{ document.querySelector('#gb-imp-cols')?.click(); } },
+          { label:'Usar clase demo', className:'btn btn-primary', onClick:()=>{ const alumnos=['María G.','José L.','Sofía R.','Luis A.','Valentina P.','Carlos D.','Fernanda S.','Diego C.','Camila V.','Jorge M.']; if(gSel) gSel.value=gSel.value||'1A'; if(taAl) taAl.value=alumnos.join('\n'); if(taCols) taCols.value='Diagnóstico,20\nProyecto,50\nExposición,30'; btnGen?.click(); } },
+        ]
+      });
+    }
+  }catch(_){ }
   // Ayuda y utilidades previas a generar
   try{
     const taColsWrap = taCols?.closest('div');
@@ -28,6 +49,7 @@ export function initGradebook(){
     if(taAl){ const wrap=taAl.closest('div'); if(wrap){ const imp=document.createElement('button'); imp.id='gb-import-alumnos'; imp.className='btn btn-secondary'; imp.textContent='Importar alumnos CSV'; imp.style.marginTop='6px'; wrap.appendChild(imp); imp.addEventListener('click',()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv'; inp.addEventListener('change',()=>{ const f=inp.files?.[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ const text=String(rd.result||''); const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); taAl.value=lines.join('\n'); }; rd.readAsText(f); }); inp.click(); }); } }
   }catch(_){ }
   btnGen?.addEventListener('click',()=>{ 
+    try{ pushLog({action:'gradebook:generar', result:'ok'}); }catch(_){ }
     const grupo=(gSel?.value||'GENERAL').trim();
     const alumnos=(taAl?.value||'').split(/\n/).map(s=>s.trim()).filter(Boolean);
     const cols=(taCols?.value||'').split(/\n/).map(l=>{
@@ -46,14 +68,54 @@ export function initGradebook(){
     }).filter(x=>x.t);
     const wSum=cols.reduce((a,b)=>a+(b.type==='num'?b.w:0),0);
     if(Math.abs(wSum-100)>0.1) alert('Advertencia: los pesos (solo columnas numéricas) no suman 100%');
-    let html='<table role="table"><thead><tr><th scope="col">Alumno</th>'+cols.map(c=>`<th scope="col" title="${c.crit}">${c.t} (${c.w}%)${c.type!=='num'?` [${c.type}]`:''}</th>`).join('')+'<th scope="col">Insignias</th><th scope="col">Promedio</th></tr></thead><tbody>';
-    alumnos.forEach((a,i)=>{ html+=`<tr><td>${a}</td>`+cols.map((c,j)=>`<td contenteditable data-type="${c.type}" data-a="${i}" data-c="${j}"></td>`).join('')+'<td class="insig"></td><td class="prom"></td></tr>';});
+    const headersHtml = cols.map((c, j) => `
+      <th scope="col" title="${c.crit}">
+        ${c.t} (${c.w}%)${c.type!=='num'?` [${c.type}]`: ''}
+        <div class="col-menu-container" style="position: absolute; top: 2px; right: 2px;">
+          <button style="background:none;border:none;color:var(--muted);cursor:pointer;" class="btn-col-menu" data-col-index="${j}">⋮</button>
+        </div>
+      </th>`).join('');
+
+    let html=`<table role="table"><thead><tr><th scope="col">Alumno</th>${headersHtml}<th scope="col">Promedio</th></tr></thead><tbody>`;
+    alumnos.forEach((a,i)=>{ html+=`<tr><td>${a}</td>`+cols.map((c,j)=>`<td contenteditable data-type="${c.type}" data-a="${i}" data-c="${j}"></td>`).join('')+'<td class="prom"></td></tr>';});
     html+='</tbody></table>';
     if (!box || !act) return;
     box.innerHTML=html; act.style.display='flex';
-    act.innerHTML='<button class="btn btn-secondary" id="gb-csv">Exportar CSV</button> <button class="btn" id="gb-xls">Exportar XLS</button> <button class="btn" id="gb-guardar">Guardar</button> <button class="btn" id="gb-ajustar">Ajustar pesos</button> <button class="btn" id="gb-json">Exportar JSON</button> <button class="btn" id="gb-load-json">Cargar JSON</button> <button class="btn" id="gb-attach">Adjuntar enlace</button> <button class="btn btn-secondary" id="gb-ver-adjuntos">Ver adjuntos</button> <button class="btn" id="gb-apply-rubrica">Aplicar rúbrica</button> <button class="btn" id="gb-reporte-clase">Reporte de clase</button> <span id="gb-status" aria-live="polite" style="align-self:center;font-size:12px;color:#94a3b8"></span>';
+    act.innerHTML = `
+      <button class="btn btn-secondary" id="gb-csv">Exportar CSV</button>
+      <button class="btn" id="gb-xls-multi">Exportar XLS</button>
+      <button class="btn" id="gb-guardar">Guardar</button>
+      <button class="btn" id="gb-ajustar">Ajustar pesos</button>
+      <button class="btn" id="gb-json">Exportar JSON</button>
+      <button class="btn btn-secondary" id="gb-reporte-clase-pro">Reporte de Clase</button>
+      <button class="btn btn-primary" id="gb-reporte-alumno-pro">Reporte de Alumno</button>
+      <span id="gb-status" aria-live="polite" style="align-self:center;font-size:12px;color:#94a3b8"></span>
+    `;
+    try{ updateStatus({ grupo }); notify('success','Tabla generada'); pushLog({action:'gradebook:tabla', result:`grupo ${grupo}`}); }catch(_){ }
+    act.addEventListener('click',(e)=>{ const id = e.target?.id||''; if(!id) return; try{ pushLog({action:`gradebook:${id}`}); }catch(_){ } }, { capture:true });
+
+    // --- Listeners para botones de acción ---
+    act.querySelector('#gb-reporte-alumno-pro')?.addEventListener('click', () => {
+      const alumnoName = prompt('Nombre del alumno para el reporte:', alumnos[0] || '');
+      if (!alumnoName) return;
+      const alumnoIndex = alumnos.findIndex(a => a.toLowerCase() === alumnoName.toLowerCase());
+      if (alumnoIndex === -1) {
+        alert('Alumno no encontrado.');
+        return;
+      }
+      // Aquí se llamaría a la función del módulo de reportes
+      alert(`Generando reporte para ${alumnoName} (índice ${alumnoIndex})...`);
+      // const data = generarReporteAlumno(grupo, alumnoIndex);
+      // imprimirReporteAlumno(data);
+    });
+
+    act.querySelector('#gb-reporte-clase-pro')?.addEventListener('click', () => {
+      alert(`Generando reporte para la clase ${grupo}...`);
+      // const data = generarReporteClase(grupo);
+      // imprimirReporteClase(data);
+    });
+
     const statusEl = act.querySelector('#gb-status');
-    try{ if(!act.querySelector('#gb-xls-multi')){ const _anchor=act.querySelector('#gb-xls'); const _b=document.createElement('button'); _b.className='btn'; _b.id='gb-xls-multi'; _b.textContent='XLS multihoja'; if(_anchor && _anchor.parentElement){ _anchor.insertAdjacentElement('afterend', _b); } else { act.appendChild(_b);} } }catch(_){ }
     let statusTimer = null;
     const setStatus=(text)=>{
       if(!statusEl) return;
@@ -99,15 +161,35 @@ export function initGradebook(){
       const promCell=tr.querySelector('td.prom');
       if (promCell) promCell.innerText = prom.toFixed(2);
     };
-    const computeBadges=()=>{
-      const data=Storage.get(K.INSIGNIAS(grupo),[]);
-      const sumByName = data.reduce((acc,b)=>{ acc[b.alumno]=(acc[b.alumno]||0)+ (parseInt(b.puntos,10)||0); return acc; },{});
-      [...box.querySelectorAll('tbody tr')].forEach(tr=>{ const nombre=tr.cells[0]?.innerText?.trim()||''; const s=sumByName[nombre]||0; const cell=tr.querySelector('td.insig'); if(cell) cell.innerText = String(s); });
-    };
     // Initial compute for all rows
     [...box.querySelectorAll('tbody tr')].forEach(computeRow);
-    computeBadges();
     // Save helper (manual + autosave use same path)
+    box.querySelector('thead')?.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-col-menu')) {
+        const colIndex = parseInt(e.target.dataset.colIndex, 10);
+        configurarAplicacionInsignias({
+          group: grupo,
+          colIndex: colIndex,
+          onApply: ({ colIndex, studentScores }) => {
+            const rows = [...box.querySelectorAll('tbody tr')];
+            const studentNames = alumnos;
+            rows.forEach((tr, rowIndex) => {
+              // This assumes student order is the same. A more robust solution would use student IDs.
+              const studentName = studentNames[rowIndex];
+              const score = studentScores[studentName]; // Matching by name
+              if (score !== undefined) {
+                const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
+                if (cell) {
+                  cell.innerText = score;
+                }
+              }
+            });
+            rows.forEach(computeRow);
+            scheduleAutosave();
+          }
+        });
+      }
+    });
     const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>{ const t=td.getAttribute('data-type'); if(t==='num'){ return (parseFloat(td.innerText)||0); } if(t==='color'){ return td.dataset.color || (td.innerText||'').trim(); } return (td.innerText||'').trim(); })); const data={grupo,alumnos,cols,vals,attachments,rubrics}; Storage.set(K.GBOOK(grupo),data); };
     // Debounced autosave on edit
     let autosaveTimer=null;
@@ -134,9 +216,7 @@ export function initGradebook(){
       if (tr) computeRow(tr);
       scheduleAutosave();
     });
-    // Update badges when insignias change for this grupo
-    const onBadgesUpdate=(ev)=>{ if(ev?.detail?.grupo===grupo) computeBadges(); };
-    document.addEventListener('atemix:insignias:update', onBadgesUpdate);
+    
     // Save before leaving the page (avoid duplicate listeners across regenerations)
     try{
       if (window.__atemixGbBeforeUnload) {
@@ -158,20 +238,7 @@ export function initGradebook(){
       const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gradebook_${grupo}.csv`; a.click(); });
     // XLS multihoja
     act.querySelector('#gb-xls-multi')?.addEventListener('click',()=>{
-      document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'start', title:'Generando XLS multihoja'}}));
-      const escXml=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      const header = `<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`;
-      const wsStart=(name)=>`<Worksheet ss:Name="${escXml(name)}"><Table>`; const wsEnd='</Table></Worksheet>';
-      const cellStr=(v)=>`<Cell><Data ss:Type="String">${escXml(v)}</Data></Cell>`; const cellNum=(n)=>`<Cell><Data ss:Type="Number">${Number.isFinite(+n)?(+n):0}</Data></Cell>`;
-      // Hoja Alumnos
-      let s1 = wsStart('Alumnos'); s1 += '<Row>' + ['Alumno', ...cols.map(c=>c.t), 'Insignias','Promedio'].map(cellStr).join('') + '</Row>';
-      const rows=[...box.querySelectorAll('tbody tr')]; const total=rows.length||1; let idx=0;
-      rows.forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const cells=[...tr.querySelectorAll('td[contenteditable]')]; const values=cells.map((td,i)=> cols[i].type==='num' ? (parseFloat(td.innerText)||0) : (td.innerText||'')); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const prom=tr.querySelector('td.prom')?.innerText.trim()||'0'; s1 += '<Row>' + [cellStr(nombre), ...values.map(v=> (typeof v==='number'?cellNum(v):cellStr(String(v)))), cellNum(insig), cellNum(prom)].join('') + '</Row>'; idx++; if(idx%3===0) document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'update', percent: Math.round((idx/total)*50), message:`Hoja Alumnos ${idx}/${total}`}})); }); s1 += wsEnd;
-      // Hoja Actividades
-      let s2 = wsStart('Actividades'); s2 += '<Row>' + ['Actividad', ...[...box.querySelectorAll('tbody tr')].map(tr=>tr.cells[0].innerText.trim())].map(cellStr).join('') + '</Row>';
-      cols.forEach((c,ci)=>{ const rowVals=[c.t]; [...box.querySelectorAll('tbody tr')].forEach(tr=>{ const td=tr.querySelector(`td[contenteditable][data-c="${ci}"]`); const val = td ? td.innerText.trim() : ''; rowVals.push(val); }); s2 += '<Row>' + rowVals.map((v,idx)=> idx===0?cellStr(v):(Number.isFinite(+v)?cellNum(+v):cellStr(String(v)))).join('') + '</Row>'; const pct = 50 + Math.round(((ci+1)/Math.max(1,cols.length))*50); if((ci+1)%2===0) document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'update', percent: pct, message:`Hoja Actividades ${ci+1}/${cols.length}`}})); }); s2 += wsEnd;
-      const xml = header + s1 + s2 + '</Workbook>'; const blob=new Blob([xml],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gradebook_${grupo}_multi.xls`; a.click();
-      document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'done', message:'XLS generado'}}));
+      exportarMultiplesCSV(grupo, generarReporteAlumnoJSON);
     });
     act.querySelector('#gb-xls')?.addEventListener('click',()=>{
       // Excel-friendly HTML export

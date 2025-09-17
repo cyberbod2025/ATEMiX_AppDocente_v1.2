@@ -1,5 +1,6 @@
 // AtemiMX · Catálogo/Visor (v1.2 mínimo)
 import {Storage, K} from '../services/storage.js';
+import { showBanner } from './ui.js';
 export async function initCatalogo(){
   const $ = (q)=>document.querySelector(q);
   const faseSel = $('#cat-fase'); const campoSel = $('#cat-campo'); const gradoSel = $('#cat-grado');
@@ -23,6 +24,7 @@ export async function initCatalogo(){
   // poblar fase
   const fases = Object.keys(data.fases||{}).sort();
   faseSel.innerHTML = '<option value="">Fase.</option>' + fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+  try{ if(!faseSel.value){ showBanner('Selecciona Fase, Campo y Grado para continuar','info'); } }catch(_){ }
   faseSel.addEventListener('change', ()=>{
     const f = data.fases[faseSel.value]; if(!f){ campoSel.innerHTML=''; gradoSel.innerHTML=''; lista.innerHTML=''; return; }
     const campos = Object.keys(f.campos||{});
@@ -58,4 +60,3 @@ export async function initCatalogo(){
     const el = e.target.closest('.cat-item'); if(!el) return; el.classList.toggle('selected');
   });
 }
-
