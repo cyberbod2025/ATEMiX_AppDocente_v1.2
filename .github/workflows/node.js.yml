@@ -1,5 +1,4 @@
 name: Node.js CI
-
 on:
   push:
     branches:
@@ -11,7 +10,6 @@ on:
       - master
       - main
       - qa/**
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
