@@ -171,21 +171,24 @@ export function initGradebook(){
           group: grupo,
           colIndex: colIndex,
           onApply: ({ colIndex, studentScores }) => {
-            const rows = [...box.querySelectorAll('tbody tr')];
-            const studentNames = alumnos;
-            rows.forEach((tr, rowIndex) => {
-              // This assumes student order is the same. A more robust solution would use student IDs.
-              const studentName = studentNames[rowIndex];
-              const score = studentScores[studentName]; // Matching by name
-              if (score !== undefined) {
-                const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
-                if (cell) {
-                  cell.innerText = score;
+            (() => {
+              const rows = [...(box?.querySelectorAll('tbody tr') || [])];
+              const studentNames = Array.isArray(alumnos) ? alumnos : [];
+              const keys = Object.keys(studentScores || {});
+              rows.forEach((tr, rowIndex) => {
+                let score;
+                if (keys.length === studentNames.length && keys.length > 0) {
+                  score = studentScores[keys[rowIndex]];
                 }
-              }
-            });
-            rows.forEach(computeRow);
-            scheduleAutosave();
+                if (score === undefined) score = studentScores[studentNames[rowIndex]];
+                if (score !== undefined) {
+                  const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
+                  if (cell) cell.innerText = score;
+                }
+              });
+              rows.forEach((r) => { if (typeof computeRow === 'function') computeRow(r); });
+              if (typeof scheduleAutosave === 'function') scheduleAutosave();
+            })();
           }
         });
       }
