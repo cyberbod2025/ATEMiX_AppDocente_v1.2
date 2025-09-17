@@ -49,6 +49,7 @@ export function initGradebook(){
     if(taAl){ const wrap=taAl.closest('div'); if(wrap){ const imp=document.createElement('button'); imp.id='gb-import-alumnos'; imp.className='btn btn-secondary'; imp.textContent='Importar alumnos CSV'; imp.style.marginTop='6px'; wrap.appendChild(imp); imp.addEventListener('click',()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='.csv,text/csv'; inp.addEventListener('change',()=>{ const f=inp.files?.[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ const text=String(rd.result||''); const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); taAl.value=lines.join('\n'); }; rd.readAsText(f); }); inp.click(); }); } }
   }catch(_){ }
   btnGen?.addEventListener('click',()=>{ 
+<<<<<<< ours
     try{ pushLog({action:'gradebook:generar', result:'ok'}); }catch(_){ }
     const grupo=(gSel?.value||'GENERAL').trim();
     const alumnos=(taAl?.value||'').split(/\n/).map(s=>s.trim()).filter(Boolean);
@@ -171,24 +172,36 @@ export function initGradebook(){
           group: grupo,
           colIndex: colIndex,
           onApply: ({ colIndex, studentScores }) => {
-            (() => {
-              const rows = [...(box?.querySelectorAll('tbody tr') || [])];
-              const studentNames = Array.isArray(alumnos) ? alumnos : [];
-              const keys = Object.keys(studentScores || {});
-              rows.forEach((tr, rowIndex) => {
-                let score;
-                if (keys.length === studentNames.length && keys.length > 0) {
-                  score = studentScores[keys[rowIndex]];
+            const rows = [...(box?.querySelectorAll('tbody tr') || [])];
+            const students = Array.isArray(alumnos) ? alumnos : [];
+            const scores = studentScores || {};
+            const keys = Object.keys(scores);
+            const mapByIndex = keys.length > 0 && keys.length === students.length;
+            const hasScore = (name) => typeof name === 'string' && Object.prototype.hasOwnProperty.call(scores, name);
+            rows.forEach((tr, rowIndex) => {
+              let score;
+              if (mapByIndex && rowIndex < keys.length) {
+                score = scores[keys[rowIndex]];
+              }
+              if (score === undefined) {
+                const nameFromList = students[rowIndex];
+                if (hasScore(nameFromList)) {
+                  score = scores[nameFromList];
                 }
-                if (score === undefined) score = studentScores[studentNames[rowIndex]];
-                if (score !== undefined) {
-                  const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
-                  if (cell) cell.innerText = score;
+              }
+              if (score === undefined) {
+                const fallbackName = tr.querySelector('th')?.innerText.trim() || tr.cells[0]?.innerText.trim();
+                if (hasScore(fallbackName)) {
+                  score = scores[fallbackName];
                 }
-              });
-              rows.forEach((r) => { if (typeof computeRow === 'function') computeRow(r); });
-              if (typeof scheduleAutosave === 'function') scheduleAutosave();
-            })();
+              }
+              if (score !== undefined) {
+                const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
+                if (cell) cell.innerText = score;
+              }
+              if (typeof computeRow === 'function') computeRow(tr);
+            });
+            if (typeof scheduleAutosave === 'function') scheduleAutosave();
           }
         });
       }
@@ -238,6 +251,19 @@ export function initGradebook(){
       let csv=csvSafe('Alumno')+','+cols.map(c=>csvSafe(c.t+(c.type!=='num'?` [${c.type}]`:''))).join(',')+','+csvSafe('Insignias')+','+csvSafe('Promedio')+'\n';
       const rows=[...box.querySelectorAll('tbody tr')]; const total=rows.length||1; let idx=0;
       rows.forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const cells=[...tr.querySelectorAll('td[contenteditable]')]; const values=cells.map(td=>td.innerText.trim()); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const numericIdx=cells.map((td,i)=> cols[i]?.type==='num' ? i : -1).filter(i=>i>=0); const sumW=numericIdx.reduce((a,i)=> a + (cols[i]?.w||0), 0); const prom = sumW>0 ? numericIdx.reduce((acc,i)=> acc + ((parseFloat(values[i])||0) * (cols[i].w/sumW)), 0) : 0; csv+=csvSafe(nombre)+','+values.map(csvSafe).join(',')+','+csvSafe(insig)+','+csvSafe(prom.toFixed(2))+'\n'; idx++; if(idx%5===0) document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'update', percent: Math.round((idx/total)*100), message:`${idx}/${total}`}})); });
+=======
+    const grupo=(gSel.value||'GENERAL').trim();
+    const alumnos=(taAl.value||'').split(/\n/).map(s=>s.trim()).filter(Boolean);
+    const cols=(taCols.value||'').split(/\n/).map(l=>{const [t,p,c]=l.split(',');return{t:(t||'Actividad').trim(),w:parseFloat(p||0),crit:(c||'')}}).filter(x=>x.t);
+    const wSum=cols.reduce((a,b)=>a+b.w,0); if(Math.abs(wSum-100)>0.1) alert('Advertencia: los pesos no suman 100%');
+    let html='<table><thead><tr><th>Alumno</th>'+cols.map(c=>`<th title="${c.crit}">${c.t} (${c.w}%)</th>`).join('')+'<th>Promedio</th></tr></thead><tbody>';
+    alumnos.forEach((a,i)=>{ html+=`<tr><td>${a}</td>`+cols.map((c,j)=>`<td contenteditable data-a="${i}" data-c="${j}"></td>`).join('')+'<td class="prom"></td></tr>`});
+    html+='</tbody></table>'; box.innerHTML=html; act.style.display='flex';
+    act.innerHTML='<button class="btn btn-secondary" id="gb-csv">Exportar CSV</button> <button class="btn" id="gb-guardar">Guardar</button>';
+    const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>parseFloat(td.innerText)||0)); const data={grupo,alumnos,cols,vals}; Storage.set(K.GBOOK(grupo),data); alert('Gradebook guardado');};
+    act.querySelector('#gb-guardar').addEventListener('click',save); 
+    act.querySelector('#gb-csv').addEventListener('click',()=>{ let csv='Alumno,'+cols.map(c=>c.t).join(',')+',Promedio\n';
+      [...box.querySelectorAll('tbody tr')].forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const v=[...tr.querySelectorAll('td[contenteditable]')].map(td=>{ const num=parseFloat(td.innerText.replace(',','.')); return Number.isFinite(num)?num:0; }); const prom=v.reduce((a,b,i)=>a+b*((cols[i]?.w||0)/100),0); csv+=nombre+','+v.join(',')+','+prom.toFixed(2)+'\n';});
       const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gradebook_${grupo}.csv`; a.click(); });
     // XLS multihoja
     act.querySelector('#gb-xls-multi')?.addEventListener('click',()=>{
