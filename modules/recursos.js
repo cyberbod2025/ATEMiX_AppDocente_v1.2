@@ -10,6 +10,8 @@ const state = {
   view: 'grid',
 };
 
+const MAX_RESOURCE_BYTES = 4 * 1024 * 1024;
+
 let wired = false;
 
 export function initRecursos() {
@@ -111,10 +113,22 @@ function wireEvents() {
   const demoBtn = document.getElementById('res-load-demo');
   const list = document.getElementById('recursos-list');
 
-  fileInput?.addEventListener('change', async () => {
-    if (!fileInput.files || !fileInput.files.length) return;
-    await addFiles(fileInput.files, fileTags?.value || '');
-    fileInput.value = '';
+  fileInput?.addEventListener('change', async (ev) => {
+    const inputEl = ev.target;
+    const files = Array.from(inputEl?.files || []);
+    if (!files.length) return;
+    const allowed = [];
+    for (const f of files) {
+      if (f.size > MAX_RESOURCE_BYTES) {
+        notify('warn', `El archivo "${f.name}" supera el límite recomendado de 4 MB. Usa un archivo más pequeño o guarda un enlace.`);
+        continue;
+      }
+      allowed.push(f);
+    }
+    if (allowed.length) {
+      await addFiles(allowed, fileTags?.value || '');
+    }
+    if (inputEl) inputEl.value = '';
   });
 
   addLinkBtn?.addEventListener('click', () => {
