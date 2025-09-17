@@ -171,24 +171,36 @@ export function initGradebook(){
           group: grupo,
           colIndex: colIndex,
           onApply: ({ colIndex, studentScores }) => {
-            (() => {
-              const rows = [...(box?.querySelectorAll('tbody tr') || [])];
-              const studentNames = Array.isArray(alumnos) ? alumnos : [];
-              const keys = Object.keys(studentScores || {});
-              rows.forEach((tr, rowIndex) => {
-                let score;
-                if (keys.length === studentNames.length && keys.length > 0) {
-                  score = studentScores[keys[rowIndex]];
+            const rows = [...(box?.querySelectorAll('tbody tr') || [])];
+            const students = Array.isArray(alumnos) ? alumnos : [];
+            const scores = studentScores || {};
+            const keys = Object.keys(scores);
+            const mapByIndex = keys.length > 0 && keys.length === students.length;
+            const hasScore = (name) => typeof name === 'string' && Object.prototype.hasOwnProperty.call(scores, name);
+            rows.forEach((tr, rowIndex) => {
+              let score;
+              if (mapByIndex && rowIndex < keys.length) {
+                score = scores[keys[rowIndex]];
+              }
+              if (score === undefined) {
+                const nameFromList = students[rowIndex];
+                if (hasScore(nameFromList)) {
+                  score = scores[nameFromList];
                 }
-                if (score === undefined) score = studentScores[studentNames[rowIndex]];
-                if (score !== undefined) {
-                  const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
-                  if (cell) cell.innerText = score;
+              }
+              if (score === undefined) {
+                const fallbackName = tr.querySelector('th')?.innerText.trim() || tr.cells[0]?.innerText.trim();
+                if (hasScore(fallbackName)) {
+                  score = scores[fallbackName];
                 }
-              });
-              rows.forEach((r) => { if (typeof computeRow === 'function') computeRow(r); });
-              if (typeof scheduleAutosave === 'function') scheduleAutosave();
-            })();
+              }
+              if (score !== undefined) {
+                const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
+                if (cell) cell.innerText = score;
+              }
+              if (typeof computeRow === 'function') computeRow(tr);
+            });
+            if (typeof scheduleAutosave === 'function') scheduleAutosave();
           }
         });
       }

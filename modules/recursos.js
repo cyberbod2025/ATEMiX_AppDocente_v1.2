@@ -126,7 +126,7 @@ function wireEvents() {
       allowed.push(f);
     }
     if (allowed.length) {
-      await addFiles(allowed, fileTags?.value || '');
+      await persistFilesSafely(allowed, fileTags?.value || '');
     }
     if (inputEl) inputEl.value = '';
   });
@@ -361,6 +361,72 @@ function deleteResource(id) {
   saveResources();
   renderResources();
   notify('success', 'Recurso eliminado.');
+}
+
+async function persistFilesSafely(files, tagsText) {
+  if (!Array.isArray(files) || !files.length) return;
+  try {
+    if (typeof addFiles === 'function') {
+      await addFiles(files, tagsText);
+      return;
+    }
+  } catch (error) {
+    console.warn('[Recursos] addFiles fallo, usando fallback', error);
+  }
+  await addFilesFallback(files, tagsText);
+}
+
+async function addFilesFallback(files, tagsText) {
+  const tags = parseTags(tagsText);
+  const added = [];
+  for (const file of files) {
+    if (!file) continue;
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      added.push({
+        id: `res-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: file.name.replace(/\.[^.]+$/, ''),
+        originalName: file.name,
+        type: detectType(file.type, file.name),
+        mime: file.type || '',
+        size: file.size || 0,
+        src: dataUrl,
+        kind: 'file',
+        tags: [...tags],
+        addedAt: Date.now(),
+      });
+    } catch (err) {
+      console.warn('[Recursos] No se pudo leer el archivo', err);
+    }
+  }
+  if (!added.length) return;
+
+  state.resources = [...added, ...state.resources];
+  try {
+    saveResources();
+  } catch (err) {
+    console.warn('[Recursos] saveResources fallo', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      window.state = window.state || {};
+      const existing = Array.isArray(window.state.resources) ? window.state.resources : [];
+      window.state.resources = [...added, ...existing];
+      Storage.set('resources', window.state.resources);
+    } catch (err) {
+      console.warn('[Recursos] No se pudo actualizar window.state.resources', err);
+    }
+  } else {
+    try {
+      Storage.set('resources', state.resources);
+    } catch (err) {
+      console.warn('[Recursos] No se pudo actualizar Storage sin window', err);
+    }
+  }
+
+  renderResources();
+  notify('success', `${added.length} recurso(s) añadido(s).`);
 }
 
 async function addFiles(fileList, tagsText) {
