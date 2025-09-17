@@ -1,0 +1,97 @@
+*** Begin Patch
+*** Add File: package.json
++{
++  "name": "atemix-appdocente",
++  "version": "1.0.0",
++  "private": true,
++  "type": "module",
++  "scripts": {
++    "test": "node --test"
++  }
++}
+*** End Patch
+*** Begin Patch
+*** Add File: qa-patches/recursos_handler_snippet.js
++/**
++ * SNIPPET QA — Recursos: validación 4MB y guardado local (pégalo en modules/recursos.js)
++ *
++ * Inserta este handler en el punto donde manejas el input file '#res-file'.
++ * Si tu proyecto usa funciones con otros nombres, adapta las llamadas a guardar.
++ */
++// VALIDACIÓN SIMPLE: máximo 4 MB
++const MAX_BYTES = 4 * 1024 * 1024;
++document.querySelector('#res-file')?.addEventListener('change', async (ev) => {
++  const files = Array.from(ev.target.files || []);
++  for (const f of files) {
++    if (f.size > MAX_BYTES) {
++      alert(`El archivo "${f.name}" supera el límite recomendado de 4 MB. Usa un archivo más pequeño o guarda un enlace.`);
++      continue; // omitir archivo grande
++    }
++    const rd = new FileReader();
++    rd.onload = () => {
++      const dataUrl = String(rd.result || '');
++      // Si tu repo ya tiene una función de guardado, usa esa en lugar del fallback.
++      if (typeof guardarRecursoDesdeUI === 'function') {
++        guardarRecursoDesdeUI({ title: f.name, mime: f.type, dataUrl, size: f.size });
++      } else {
++        // Fallback seguro: guarda en un state local y usa Storage si existe
++        window.state = window.state || {};
++        window.state.resources = window.state.resources || [];
++        const r = {
++          id: `res_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
++          title: f.name,
++          mime: f.type,
++          data: dataUrl,
++          size: f.size,
++          tags: []
++        };
++        window.state.resources.unshift(r);
++        if (window.Storage && typeof window.Storage.set === 'function') {
++          try { window.Storage.set('resources', window.state.resources); } catch(e) { console.warn('Storage.set falló', e); }
++        }
++        if (typeof renderResources === 'function') renderResources();
++      }
++    };
++    rd.readAsDataURL(f);
++  }
++  // limpiar input para permitir re-subida del mismo archivo
++  ev.target.value = '';
++});
++
++// NOTA: busca en modules/recursos.js el manejador antiguo (document.querySelector('#res-file')...) y reemplázalo
+*** End Patch
+*** Begin Patch
+*** Add File: qa-patches/gradebook_fallback_snippet.js
++/**
++ * SNIPPET QA — Gradebook: fallback seguro para aplicar insignias
++ *
++ * Pégalo en modules/gradebook.js dentro del bloque que aplica studentScores/insignias.
++ * Asegúrate de que 'alumnos' sea el array con el orden actual de los estudiantes.
++ */
++// Fallback seguro para aplicar puntuaciones/insignias por índice si existe, y por nombre en su defecto
++// (colIndex debe estar en alcance donde se usa)
++(() => {
++  // 'box' debe ser el contenedor del gradebook donde están las filas
++  const rows = [...(box?.querySelectorAll('tbody tr') || [])];
++  const studentNames = Array.isArray(alumnos) ? alumnos : []; // adapta si tu variable se llama distinto
++  rows.forEach((tr, rowIndex) => {
++    let score;
++    const keys = Object.keys(studentScores || {});
++    // Si el mapeo tiene la misma longitud que alumnos, mapear por orden
++    if (keys.length === studentNames.length && keys.length > 0) {
++      score = studentScores[keys[rowIndex]];
++    }
++    // Fallback: si había mapping por nombre
++    if (score === undefined) score = studentScores[studentNames[rowIndex]];
++    if (score !== undefined) {
++      const cell = tr.querySelector(`td[data-c="${colIndex}"]`);
++      if (cell) cell.innerText = score;
++    }
++  });
++  // Recalcula filas y guarda
++  rows.forEach((r) => { if (typeof computeRow === 'function') computeRow(r); });
++  if (typeof scheduleAutosave === 'function') scheduleAutosave();
++})();
++
++// NOTA: busca dónde se aplican las insignias actualmente (studentScores) y sustituye o integra este bloque.
+*** End Patch
