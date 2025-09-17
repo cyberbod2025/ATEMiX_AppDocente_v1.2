@@ -1,0 +1,16 @@
+// AtemiMX · Onboarding (DEBUG)
+
+console.log('[DEBUG] Módulo onboarding.js cargado.');
+
+function initOnboarding(){
+  console.log('[DEBUG] initOnboarding() llamado.');
+  // El resto del código está comentado para la depuración.
+}
+
+// Ejecutar la inicialización solo cuando el DOM esté listo.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initOnboarding);
+} else {
+  initOnboarding();
+}
+
