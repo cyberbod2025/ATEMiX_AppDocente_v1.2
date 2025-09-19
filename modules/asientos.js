@@ -1,8 +1,7 @@
-
 import { Storage, K } from '../services/storage.js';
+import { notify } from './ui.js';
 
-// Defino la nueva clave aquí temporalmente, luego la añadiré a storage.js
-const K_SEATING_LAST = (g) => `atemix.seating.last.${g}`;
+// Las claves de almacenamiento se gestionan en services/storage.js
 
 // Estado local del módulo
 let state = {
@@ -33,12 +32,13 @@ function renderModuleUI(container) {
   const root = container.querySelector('#seating-root');
   if (!root) return;
   root.innerHTML = `
-    <div class="row" style="gap:12px; margin-bottom: 1rem; align-items: center;">
+    <div class="row" style="gap:12px; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
       <div>
         <label for="seating-group">Grupo</label>
         <input id="seating-group" class="input-field" value="${state.group}">
       </div>
       <div style="display: flex; gap: 8px; align-items: center; margin-top: auto;">
+        <button id="seating-load-students" class="btn btn-secondary">👥 Cargar Alumnos</button>
         <button id="seating-random" class="btn">🧑‍🏫 Al Azar</button>
         <button id="seating-teams" class="btn">🎨 Formar Equipos</button>
         <button id="seating-save" class="btn btn-primary">💾 Guardar</button>
@@ -67,7 +67,6 @@ function renderGrid() {
       seatEl.style.borderLeft = '5px solid var(--seat-team-color)';
     }
 
-    // MODIFICADO: Quitado botón +1, añadido contador con estrella
     seatEl.innerHTML = `
       <div class="name" contenteditable="true" data-placeholder="Vacío">${seatData.name || ''}</div>
       <div class="note" contenteditable="true" data-placeholder="Anotación...">${seatData.note || ''}</div>
@@ -80,11 +79,11 @@ function renderGrid() {
 
 function wireEventListeners() {
   $('#seating-group')?.addEventListener('change', handleGroupChange);
+  $('#seating-load-students')?.addEventListener('click', handleLoadStudents);
   $('#seating-random')?.addEventListener('click', handleRandomSelection);
   $('#seating-teams')?.addEventListener('click', handleTeamFormation);
   $('#seating-save')?.addEventListener('click', saveState);
   
-  // MODIFICADO: Evento de doble clic para participación
   $('#seating-grid')?.addEventListener('dblclick', (e) => {
     const seatEl = e.target.closest('.seat');
     if (seatEl) {
@@ -97,11 +96,47 @@ function wireEventListeners() {
   });
 }
 
+function handleLoadStudents() {
+  const group = $('#seating-group').value.trim();
+  if (!group) {
+    notify('warn', 'Por favor, especifica un grupo para cargar los alumnos.');
+    return;
+  }
+
+  const gradebookData = Storage.get(K.GBOOK(group));
+  const studentNames = gradebookData?.alumnos || [];
+
+  if (studentNames.length === 0) {
+    notify('info', `No se encontraron alumnos en el Gradebook para el grupo "${group}".`);
+    return;
+  }
+
+  const currentStudents = state.seats.filter(s => s.name).length;
+  if (currentStudents > 0) {
+    if (!confirm('¿Deseas sobrescribir el plano actual con los alumnos del Gradebook? Se perderán los nombres y notas actuales.')) {
+      return;
+    }
+  }
+
+  // Mapear alumnos a los asientos existentes
+  const newSeats = state.seats.map((seat, i) => {
+    const studentName = studentNames[i] || '';
+    return {
+      ...seat, // Conservar ID de asiento y equipo si existe
+      name: studentName,
+      note: '' // Limpiar notas anteriores
+    };
+  });
+
+  state.seats = newSeats;
+  renderGrid();
+  notify('success', `${studentNames.length} alumnos cargados en el plano. No olvides guardar los cambios.`);
+}
+
 function loadState(group) {
   const savedState = Storage.get(K.ASIENTOS(group));
   const participation = Storage.get(K.PART(group));
-  // MODIFICADO: Cargar historial de seleccionados al azar
-  const lastRandom = Storage.get(K_SEATING_LAST(group));
+  const lastRandom = Storage.get(K.SEATING_LAST(group));
 
   if (savedState) {
     state.config = savedState.config;
@@ -140,10 +175,9 @@ function saveState() {
 
   Storage.set(K.ASIENTOS(state.group), dataToSave);
   Storage.set(K.PART(state.group), state.participation);
-  // MODIFICADO: Guardar historial de seleccionados al azar
-  Storage.set(K_SEATING_LAST(state.group), state.lastRandomPicks);
+  Storage.set(K.SEATING_LAST(state.group), state.lastRandomPicks);
   
-  alert(`Plano del grupo ${state.group} guardado.`);
+  notify('success', `Plano del grupo ${state.group} guardado.`);
 }
 
 function handleGroupChange(e) {
@@ -159,14 +193,15 @@ function handleGroupChange(e) {
 function handleRandomSelection() {
   const availableSeats = state.seats.filter(s => s && s.name);
   if (availableSeats.length === 0) {
-    alert('No hay alumnos en el plano.');
+    notify('warn', 'No hay alumnos en el plano para seleccionar.');
     return;
   }
 
   let selectable = availableSeats.filter(s => !state.lastRandomPicks.includes(s.id));
-  if (selectable.length <= 1 && availableSeats.length > 1) { // Dejar al menos 1 para no entrar en bucle
+  if (selectable.length <= 1 && availableSeats.length > 1) {
     state.lastRandomPicks = [];
     selectable = availableSeats;
+    notify('info', 'Se ha reiniciado el ciclo de selección aleatoria.');
   }
 
   const randomIndex = Math.floor(Math.random() * selectable.length);
@@ -175,7 +210,7 @@ function handleRandomSelection() {
   if (!selectedSeat) return;
 
   state.lastRandomPicks.push(selectedSeat.id);
-  if (state.lastRandomPicks.length > 3) {
+  if (state.lastRandomPicks.length > Math.floor(availableSeats.length * 0.5)) { // Evitar repetir hasta que el 50% haya participado
     state.lastRandomPicks.shift();
   }
 
@@ -196,7 +231,12 @@ function handleTeamFormation() {
   if (isNaN(numTeams) || numTeams < 2) return;
 
   const studentSeats = state.seats.filter(s => s && s.name);
+  if (studentSeats.length < numTeams) {
+    notify('warn', 'No hay suficientes alumnos para formar tantos equipos.');
+    return;
+  }
   
+  // Algoritmo de shuffle (Fisher-Yates)
   for (let i = studentSeats.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [studentSeats[i], studentSeats[j]] = [studentSeats[j], studentSeats[i]];
@@ -211,7 +251,7 @@ function handleTeamFormation() {
   });
 
   renderGrid();
-  // No se guarda automáticamente, el usuario debe presionar "Guardar"
+  notify('info', `Equipos formados. Pulsa "Guardar" para conservar la asignación.`);
 }
 
 function handleParticipationAdd(seatId) {
