@@ -1,109 +1,169 @@
-import { Storage, K } from '../services/storage.js';
+const XLS_HEADER = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
+const XLS_NAMESPACES = 'xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"';
 
-/**
- * Genera el contenido CSV para un reporte de alumno individual.
- */
-function generarCSVAlumno(reporteData) {
-  if (!reporteData) return '';
-  const { info, calificaciones, promedioGeneral, insignias } = reporteData;
-  
-  let csv = `"Reporte de Progreso del Alumno"\n`;
-  csv += `"Nombre","${info.nombre}"\n`;
-  csv += `"Grupo","${info.grupo}"\n`;
-  csv += `"Fecha","${info.fecha}"\n\n`;
-  csv += `"Promedio General","${promedioGeneral.toFixed(2)}"\n\n`;
-  
-  csv += `"Insignias (Puntos)"\n`;
-  csv += Object.entries(insignias).map(([tipo, pts]) => `"${tipo}","${pts}"`).join('\n') + '\n\n';
-
-  csv += `"Detalle de Calificaciones"\n`;
-  csv += `"Actividad","Criterio","Peso (%)","Calificación"\n`;
-  csv += calificaciones.map(c => `"${c.actividad}","${c.criterio}","${c.peso}","${c.calificacion.toFixed(2)}"`).join('\n');
-
-  return csv;
+function escapeXml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
-/**
- * Genera el contenido CSV para el resumen de la clase.
- */
-function generarCSVResumen(claseData) {
-  let csv = `"Resumen de la Clase","${claseData.info.grupo}"\n\n`;
-  csv += `"Estadísticas Generales"\n`;
-  csv += `"Promedio de la Clase","${claseData.promedioClase.toFixed(2)}"\n`;
-  csv += `"Total de Alumnos","${claseData.alumnos.length}"\n\n`;
-
-  csv += `"Desempeño de Alumnos"\n`;
-  csv += `"Alumno","Promedio Individual","Total Insignias (Puntos)"\n`;
-  csv += claseData.alumnos.map(a => `"${a.nombre}","${a.promedio.toFixed(2)}","${a.insigniasTotal}"`).join('\n');
-
-  return csv;
+function sanitizeFileName(name) {
+  return String(name || 'reporte').replace(/[^a-zA-Z0-9-_]+/g, '_');
 }
 
-/**
- * Simula la creación de un ZIP descargando múltiples archivos CSV secuencialmente.
- * @param {string} grupo - El grupo para el cual se genera el reporte.
- * @param {Function} generarReporteFn - La función para generar el JSON de un alumno.
- */
-export function exportarMultiplesCSV(grupo, generarReporteFn) {
-  alert('Iniciando exportación. Se descargarán múltiples archivos CSV (uno por alumno y un resumen) ya que no hay una librería de compresión ZIP integrada.');
+function createCell(value) {
+  const num = Number(value);
+  if (!Number.isNaN(num) && value !== '' && value !== null && value !== undefined) {
+    return `<Cell><Data ss:Type="Number">${num}</Data></Cell>`;
+  }
+  return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+}
 
-  const gradebook = Storage.get(K.GBOOK(grupo), {});
-  if (!gradebook.alumnos || gradebook.alumnos.length === 0) {
-    alert('No hay alumnos en este grupo para exportar.');
+function buildWorksheet(name, rows) {
+  const safe = sanitizeWorksheetName(name);
+  const body = Array.isArray(rows)
+    ? rows.map((row) => `<Row>${row.map((cell) => createCell(cell)).join('')}</Row>`).join('')
+    : '';
+  return `<Worksheet ss:Name="${safe}"><Table>${body}</Table></Worksheet>`;
+}
+
+function sanitizeWorksheetName(name) {
+  const trimmed = String(name || 'Hoja').trim();
+  const invalid = /[\\/*?:\[\]]/g;
+  const clean = trimmed.replace(invalid, '_') || 'Hoja';
+  return clean.length > 31 ? clean.slice(0, 31) : clean;
+}
+
+function buildWorkbook(sheets) {
+  const sheetXml = (Array.isArray(sheets) ? sheets : [])
+    .map((sheet, index) => buildWorksheet(sheet?.name || `Hoja${index + 1}`, sheet?.rows || []))
+    .join('');
+  return `${XLS_HEADER}<Workbook ${XLS_NAMESPACES}>${sheetXml}</Workbook>`;
+}
+
+function downloadBlob(blob, filename) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+    link.remove();
+  }, 0);
+}
+
+export function descargarAlumnoXLS(reporte) {
+  if (!reporte) {
+    alert('No hay datos de reporte para exportar.');
     return;
   }
+  const info = reporte.info || {};
+  const resumenRows = [
+    ['Campo', 'Valor'],
+    ['Nombre', info.nombre || ''],
+    ['Grupo', info.grupo || ''],
+    ['Escuela', info.escuela || ''],
+    ['Docente', info.docente || ''],
+    ['Ciclo', info.ciclo || ''],
+    ['Fecha', info.fecha || ''],
+    ['Promedio general', Number(reporte.promedioGeneral ?? 0).toFixed(2)],
+    ['Total insignias', Number((reporte.insignias?.total) ?? 0)]
+  ];
 
-  const claseData = {
-    info: { grupo },
-    alumnos: [],
-    promedioClase: 0,
-  };
+  const calificacionesRows = [
+    ['Actividad', 'Tipo', 'Criterio', 'Peso', 'Valor']
+  ];
+  (reporte.calificaciones || []).forEach((item) => {
+    calificacionesRows.push([
+      item.actividad || '',
+      item.tipo || '',
+      item.criterio || '',
+      item.peso ?? '',
+      typeof item.calificacion === 'number' ? item.calificacion : (item.valor ?? '')
+    ]);
+  });
 
-  const reportesAlumnos = gradebook.alumnos.map((_, index) => {
-    const reporte = generarReporteFn({ grupo, alumno_index: index });
-    if (reporte) {
-      claseData.alumnos.push({
-        nombre: reporte.info.nombre,
-        promedio: reporte.promedioGeneral,
-        insigniasTotal: reporte.insignias.total || 0,
-      });
-    }
-    return reporte;
-  }).filter(Boolean);
-
-  if (claseData.alumnos.length > 0) {
-      claseData.promedioClase = claseData.alumnos.reduce((sum, a) => sum + a.promedio, 0) / claseData.alumnos.length;
+  const insigniasRows = [['Tipo', 'Puntos']];
+  const insignias = reporte.insignias || {};
+  Object.keys(insignias).forEach((tipo) => {
+    if (tipo === 'total') return;
+    insigniasRows.push([tipo, insignias[tipo]]);
+  });
+  if (insigniasRows.length === 1) {
+    insigniasRows.push(['Sin insignias', 0]);
   }
+  insigniasRows.push(['Total', insignias.total || 0]);
 
-  const archivosCSV = [];
+  const xml = buildWorkbook([
+    { name: 'Resumen', rows: resumenRows },
+    { name: 'Calificaciones', rows: calificacionesRows },
+    { name: 'Insignias', rows: insigniasRows }
+  ]);
 
-  // 1. Añadir resumen de la clase
-  archivosCSV.push({
-    nombre: `resumen_clase_${grupo}.csv`,
-    contenido: generarCSVResumen(claseData)
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+  downloadBlob(blob, `reporte_${sanitizeFileName(info.nombre || 'alumno')}.xls`);
+}
+
+export function descargarClaseXLS(reporte) {
+  if (!reporte) {
+    alert('No hay datos de clase para exportar.');
+    return;
+  }
+  const info = reporte.info || {};
+  const resumenRows = [
+    ['Campo', 'Valor'],
+    ['Grupo', info.grupo || ''],
+    ['Escuela', info.escuela || ''],
+    ['Docente', info.docente || ''],
+    ['Ciclo', info.ciclo || ''],
+    ['Fecha', info.fecha || ''],
+    ['Promedio de la clase', Number(reporte.promedioClase ?? 0).toFixed(2)],
+    ['Total de alumnos', (reporte.alumnos || []).length],
+    ['Total insignias', Number(reporte.totalInsignias ?? 0)]
+  ];
+
+  const alumnosRows = [['Alumno', 'Promedio', 'Insignias']];
+  (reporte.alumnos || []).forEach((alumno) => {
+    alumnosRows.push([
+      alumno.nombre || '',
+      Number(alumno.promedio ?? 0).toFixed(2),
+      Number(alumno.insigniasTotal ?? 0)
+    ]);
   });
 
-  // 2. Añadir reporte individual por alumno
-  reportesAlumnos.forEach(reporte => {
-    archivosCSV.push({
-      nombre: `reporte_${reporte.info.nombre.replace(/ /g, '_')}.csv`,
-      contenido: generarCSVAlumno(reporte)
-    });
+  const actividadesRows = [['Actividad', 'Peso', 'Promedio']];
+  (reporte.promediosActividad || []).forEach((item) => {
+    actividadesRows.push([
+      item.nombre || '',
+      Number(item.peso ?? 0),
+      Number(item.promedio ?? 0).toFixed(2)
+    ]);
   });
 
-  // 3. Descargar archivos secuencialmente
-  let i = 0;
-  const interval = setInterval(() => {
-    if (i >= archivosCSV.length) {
-      clearInterval(interval);
-      return;
-    }
-    const archivo = archivosCSV[i];
-    const blob = new Blob([archivo.contenido], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = archivo.nombre;
-    a.click();
-    i++;
-  }, 700); // Pequeño delay para evitar que el navegador bloquee las descargas
+  const insigniasRows = [['Tipo', 'Puntos']];
+  const porTipo = reporte.insigniasPorTipo || {};
+  Object.keys(porTipo).forEach((tipo) => {
+    insigniasRows.push([tipo, Number(porTipo[tipo] ?? 0)]);
+  });
+  insigniasRows.push(['Total', Number(reporte.totalInsignias ?? 0)]);
+
+  const xml = buildWorkbook([
+    { name: 'Resumen', rows: resumenRows },
+    { name: 'Alumnos', rows: alumnosRows },
+    { name: 'Actividades', rows: actividadesRows },
+    { name: 'Insignias', rows: insigniasRows }
+  ]);
+
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+  downloadBlob(blob, `reporte_clase_${sanitizeFileName(info.grupo || 'grupo')}.xls`);
+}
+
+export function descargarWorkbook(nombreArchivo, sheets) {
+  const xml = buildWorkbook(sheets);
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+  downloadBlob(blob, nombreArchivo);
 }

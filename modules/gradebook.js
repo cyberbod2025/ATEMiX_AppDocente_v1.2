@@ -1,10 +1,9 @@
 // Gradebook NEM mínimo: alumnos, actividades con peso, promedio, CSV
-import {Storage,K} from '../services/storage.js';
+import { Storage, K, withSync, importClassroomRoster } from '../services/storage.js';
 import { emptyState, notify, pushLog, updateStatus } from './ui.js';
 import { calcularScoreRubrica } from './rubricas.js';
 import { configurarAplicacionInsignias } from './insignias.js';
-import { generarReporteAlumno, imprimirReporteAlumno } from './reportes.js';
-import { exportarMultiplesCSV } from './export_xls.js';
+import { generarReporteAlumno, generarReporteClase, descargarReporteAlumnoPDF, descargarReporteAlumnoXLS, descargarReporteClasePDF, descargarReporteClaseXLS, imprimirReporteAlumno } from './reportes.js';
 export function initGradebook(){
   const $=(q)=>document.querySelector(q); const v=$('#view-gradebook'); if(!v) return;
   const gSel=$('#gb-grupo'); const taAl=$('#gb-alumnos'); const taCols=$('#gb-actividades');
@@ -87,6 +86,7 @@ export function initGradebook(){
       <button class="btn" id="gb-guardar">Guardar</button>
       <button class="btn" id="gb-ajustar">Ajustar pesos</button>
       <button class="btn" id="gb-json">Exportar JSON</button>
+      <button class="btn" id="gb-classroom">Importar Classroom</button>
       <button class="btn btn-secondary" id="gb-reporte-clase-pro">Reporte de Clase</button>
       <button class="btn btn-primary" id="gb-reporte-alumno-pro">Reporte de Alumno</button>
       <span id="gb-status" aria-live="polite" style="align-self:center;font-size:12px;color:#94a3b8"></span>
@@ -96,23 +96,54 @@ export function initGradebook(){
 
     // --- Listeners para botones de acción ---
     act.querySelector('#gb-reporte-alumno-pro')?.addEventListener('click', () => {
-      const alumnoName = prompt('Nombre del alumno para el reporte:', alumnos[0] || '');
-      if (!alumnoName) return;
-      const alumnoIndex = alumnos.findIndex(a => a.toLowerCase() === alumnoName.toLowerCase());
-      if (alumnoIndex === -1) {
-        alert('Alumno no encontrado.');
+      if (!alumnos.length) {
+        alert('No hay alumnos en la tabla.');
         return;
       }
-      // Aquí se llamaría a la función del módulo de reportes
-      alert(`Generando reporte para ${alumnoName} (índice ${alumnoIndex})...`);
-      // const data = generarReporteAlumno(grupo, alumnoIndex);
-      // imprimirReporteAlumno(data);
+      const sugerido = alumnos[0] || '';
+      const alumnoName = prompt('Nombre del alumno para exportar (deja vacio para usar el primero):', sugerido);
+      let alumnoIndex = 0;
+      if (alumnoName && alumnoName.trim()) {
+        const normalized = alumnoName.trim().toLowerCase();
+        alumnoIndex = alumnos.findIndex((a) => a.trim().toLowerCase() === normalized);
+        if (alumnoIndex === -1) {
+          alert('Alumno no encontrado.');
+          return;
+        }
+      }
+      try { save(); } catch (_) { }
+      const reporte = generarReporteAlumno({ grupo, alumno_index: alumnoIndex });
+      if (!reporte) {
+        alert('Guarda el gradebook antes de exportar.');
+        return;
+      }
+      const formato = prompt('Formato (pdf/xls/print):', 'pdf');
+      if (!formato) return;
+      const fmt = formato.trim().toLowerCase();
+      if (fmt === 'xls' || fmt === 'excel') {
+        descargarReporteAlumnoXLS(reporte);
+      } else if (fmt === 'print' || fmt === 'imprimir') {
+        imprimirReporteAlumno({ grupo, alumno_index: alumnoIndex });
+      } else {
+        descargarReporteAlumnoPDF(reporte);
+      }
     });
 
     act.querySelector('#gb-reporte-clase-pro')?.addEventListener('click', () => {
-      alert(`Generando reporte para la clase ${grupo}...`);
-      // const data = generarReporteClase(grupo);
-      // imprimirReporteClase(data);
+      try { save(); } catch (_) { }
+      const reporte = generarReporteClase(grupo);
+      if (!reporte) {
+        alert('Guarda el gradebook antes de exportar.');
+        return;
+      }
+      const formato = prompt('Formato (pdf/xls):', 'pdf');
+      if (!formato) return;
+      const fmt = formato.trim().toLowerCase();
+      if (fmt === 'xls' || fmt === 'excel') {
+        descargarReporteClaseXLS(reporte);
+      } else {
+        descargarReporteClasePDF(reporte);
+      }
     });
 
     const statusEl = act.querySelector('#gb-status');
@@ -205,7 +236,7 @@ export function initGradebook(){
         });
       }
     });
-    const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>{ const t=td.getAttribute('data-type'); if(t==='num'){ return (parseFloat(td.innerText)||0); } if(t==='color'){ return td.dataset.color || (td.innerText||'').trim(); } return (td.innerText||'').trim(); })); const data={grupo,alumnos,cols,vals,attachments,rubrics}; Storage.set(K.GBOOK(grupo),data); };
+    const save=()=>{ const rows=[...box.querySelectorAll('tbody tr')]; const vals=rows.map(r=>[...r.querySelectorAll('td[contenteditable]')].map(td=>{ const t=td.getAttribute('data-type'); if(t==='num'){ return (parseFloat(td.innerText)||0); } if(t==='color'){ return td.dataset.color || (td.innerText||'').trim(); } return (td.innerText||'').trim(); })); const data={grupo,alumnos,cols,vals,attachments,rubrics}; withSync(K.GBOOK(grupo),data); };
     // Debounced autosave on edit
     let autosaveTimer=null;
     const scheduleAutosave=()=>{ 
@@ -250,9 +281,45 @@ export function initGradebook(){
       let csv=csvSafe('Alumno')+','+cols.map(c=>csvSafe(c.t+(c.type!=='num'?` [${c.type}]`:''))).join(',')+','+csvSafe('Insignias')+','+csvSafe('Promedio')+'\n';
       const rows=[...box.querySelectorAll('tbody tr')]; const total=rows.length||1; let idx=0;
       rows.forEach((tr)=>{ const nombre=tr.cells[0].innerText.trim(); const cells=[...tr.querySelectorAll('td[contenteditable]')]; const values=cells.map(td=>td.innerText.trim()); const insig=tr.querySelector('td.insig')?.innerText.trim()||'0'; const numericIdx=cells.map((td,i)=> cols[i]?.type==='num' ? i : -1).filter(i=>i>=0); const sumW=numericIdx.reduce((a,i)=> a + (cols[i]?.w||0), 0); const prom = sumW>0 ? numericIdx.reduce((acc,i)=> acc + ((parseFloat(values[i])||0) * (cols[i].w/sumW)), 0) : 0; csv+=csvSafe(nombre)+','+values.map(csvSafe).join(',')+','+csvSafe(insig)+','+csvSafe(prom.toFixed(2))+'\n'; idx++; if(idx%5===0) document.dispatchEvent(new CustomEvent('atemix:progress',{detail:{state:'update', percent: Math.round((idx/total)*100), message:`${idx}/${total}`}})); });
+    act.querySelector('#gb-classroom')?.addEventListener('click', async () => {
+      const courseId = prompt('ID del curso en Classroom:', '');
+      if (!courseId) return;
+      const adapterIdRaw = prompt('Adaptador (default classroom):', 'classroom');
+      const adapterId = (adapterIdRaw || 'classroom').trim() || 'classroom';
+      try {
+        const roster = await importClassroomRoster({ courseId: courseId.trim(), adapterId });
+        const list = Array.isArray(roster?.students) ? roster.students : Array.isArray(roster) ? roster : [];
+        if (!list.length) {
+          notify('warn', 'No se encontraron alumnos en el curso.');
+          return;
+        }
+        const names = list.map((item) => {
+          if (typeof item === 'string') return item.trim();
+          const candidate = item?.displayName || item?.name || `${item?.givenName || ''} ${item?.familyName || ''}`;
+          return (candidate || '').trim();
+        }).filter(Boolean);
+        if (!names.length) {
+          notify('warn', 'No se pudieron interpretar los nombres devueltos por Classroom.');
+          return;
+        }
+        if (taAl) taAl.value = names.join('\n');
+        notify('success', `Se importaron ${names.length} alumnos desde Classroom.`);
+        try { pushLog({ action: 'classroom:import', result: `curso ${courseId.trim()}` }); } catch (_) {}
+      } catch (err) {
+        console.error(err);
+        notify('error', 'No se pudo importar la lista desde Classroom.');
+      }
+    });
+
 // XLS multihoja
-    act.querySelector('#gb-xls-multi')?.addEventListener('click',()=>{
-      exportarMultiplesCSV(grupo, generarReporteAlumnoJSON);
+    act.querySelector('#gb-xls-multi')?.addEventListener('click', () => {
+      try { save(); } catch (_) { }
+      const reporte = generarReporteClase(grupo);
+      if (!reporte) {
+        alert('Guarda el gradebook antes de exportar.');
+        return;
+      }
+      descargarReporteClaseXLS(reporte);
     });
     act.querySelector('#gb-xls')?.addEventListener('click',()=>{
       // Excel-friendly HTML export

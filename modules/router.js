@@ -29,7 +29,7 @@ const moduleLoaders = {
   seating:    async () => { const m = await import('./asientos.js');   m?.initAsientos?.(); },
   planner:    async () => { const m = await import('./planner.js');    m?.initPlanner?.(); },
   scanner:    async () => { const m = await import('./scanner.js');    m?.initScanner?.(); },
-  reportes:   async () => { const m = await import('./reportes.js');   /* on demand in gradebook */ },
+  reportes:   async () => { const m = await import('./reportes.js');   m?.initReportes?.(); },
   rubricas:   async () => { const m = await import('./rubricas.js');   m?.initRubricas?.(); },
   insignias:  async () => { const m = await import('./insignias.js');  m?.initInsignias?.(); },
   recursos:  async () => { const m = await import('./recursos.js');  m?.initRecursos?.(); },

@@ -1,4 +1,4 @@
-import { Storage, K } from '../services/storage.js';
+import { Storage, K, withSync } from '../services/storage.js';
 
 const KEY_TEMPLATES = 'atemix.insignias.templates';
 const KEY_LAST_GROUP = 'atemix.insignias.lastGroup';
@@ -10,6 +10,8 @@ const DEFAULT_TEMPLATES = [
   { nombre: 'Puntualidad ejemplar', puntos: 2, tipo: 'puntualidad', descripcion: 'Refuerza asistencia y puntualidad.' },
   { nombre: 'Apoyo a la comunidad', puntos: 6, tipo: 'comunidad', descripcion: 'Reconoce acciones solidarias.' },
 ];
+const DEFAULT_DESIGN = { shape: 'medalla', fill: '#0ea5a5', accent: '#1e293b', icon: '⭐' };
+
 
 const state = {
   group: 'GENERAL',
@@ -19,9 +21,125 @@ const state = {
   templates: [],
   filters: { alumno: '', tipo: '' },
   lastAssigned: [],
+  designer: { ...DEFAULT_DESIGN },
 };
 
 let wired = false;
+const designerInputs = { shape: '#bz-forma', fill: '#bz-color', accent: '#bz-acento', icon: '#bz-icon' };
+
+function cloneDesign(design) {
+  return { ...DEFAULT_DESIGN, ...(design || {}) };
+}
+
+export function generateBadgeSVG(design = DEFAULT_DESIGN) {
+  const cfg = cloneDesign(design);
+  const fill = cfg.fill || DEFAULT_DESIGN.fill;
+  const accent = cfg.accent || DEFAULT_DESIGN.accent;
+  const icon = (cfg.icon || DEFAULT_DESIGN.icon || '⭐').slice(0, 2) || '⭐';
+  const shapes = {
+    medalla: `<circle cx="60" cy="60" r="52" fill="${fill}"/><circle cx="60" cy="60" r="38" fill="${accent}"/>`,
+    escudo: `<path fill="${fill}" d="M18 24h84v50c0 18-22 36-42 40-20-4-42-22-42-40z"/><path fill="${accent}" d="M30 34h60v32c0 10-15 23-30 26-15-3-30-16-30-26z"/>`,
+    estrella: `<polygon fill="${fill}" points="60,16 72,44 102,44 78,62 86,92 60,74 34,92 42,62 18,44 48,44"/><polygon fill="${accent}" points="60,26 69,44 88,44 74,56 80,80 60,68 40,80 46,56 32,44 51,44"/>`,
+    banderin: `<path fill="${fill}" d="M22 20h76v54l-38-14-38 14z"/><path fill="${accent}" d="M32 28h56v34l-28-10-28 10z"/>`,
+  };
+  const base = shapes[cfg.shape] || shapes.medalla;
+  return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">${base}<text x="60" y="76" text-anchor="middle" font-size="34" fill="#ffffff" font-family="Inter, Arial, sans-serif">${escapeSvgText(icon)}</text></svg>`;
+}
+
+function escapeSvgText(value) {
+  return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function persistLastGroup(group) {
+  withSync(KEY_LAST_GROUP, { value: group }, { delay: 0 });
+}
+
+function setDesignerInputs(view, design = state.designer) {
+  if (!view) return;
+  const shapeSel = view.querySelector(designerInputs.shape);
+  const fillInput = view.querySelector(designerInputs.fill);
+  const accentInput = view.querySelector(designerInputs.accent);
+  const iconInput = view.querySelector(designerInputs.icon);
+  if (shapeSel) shapeSel.value = design.shape || DEFAULT_DESIGN.shape;
+  if (fillInput) fillInput.value = design.fill || DEFAULT_DESIGN.fill;
+  if (accentInput) accentInput.value = design.accent || DEFAULT_DESIGN.accent;
+  if (iconInput) iconInput.value = (design.icon || DEFAULT_DESIGN.icon || '⭐').slice(0, 2);
+}
+
+function updateDesignerPreview(view = document.querySelector('#view-insignias')) {
+  const preview = view?.querySelector('#bz-designer-preview');
+  if (!preview) return;
+  preview.innerHTML = generateBadgeSVG(state.designer);
+}
+
+function setupDesigner(view) {
+  if (!view) return;
+  const shapeSel = view.querySelector(designerInputs.shape);
+  const fillInput = view.querySelector(designerInputs.fill);
+  const accentInput = view.querySelector(designerInputs.accent);
+  const iconInput = view.querySelector(designerInputs.icon);
+  if (!shapeSel || !fillInput || !accentInput || !iconInput) return;
+  if (shapeSel.dataset.ready === '1') {
+    setDesignerInputs(view);
+    updateDesignerPreview(view);
+    return;
+  }
+  const apply = () => {
+    state.designer = cloneDesign({
+      shape: shapeSel.value || DEFAULT_DESIGN.shape,
+      fill: fillInput.value || DEFAULT_DESIGN.fill,
+      accent: accentInput.value || DEFAULT_DESIGN.accent,
+      icon: (iconInput.value || DEFAULT_DESIGN.icon || '⭐').slice(0, 2),
+    });
+    updateDesignerPreview(view);
+  };
+  shapeSel.addEventListener('change', apply);
+  fillInput.addEventListener('input', apply);
+  accentInput.addEventListener('input', apply);
+  iconInput.addEventListener('input', () => {
+    if (iconInput.value.length > 2) iconInput.value = iconInput.value.slice(0, 2);
+    apply();
+  });
+  view.querySelector('#bz-designer-guardar')?.addEventListener('click', () => handleSaveTemplate());
+  view.querySelector('#bz-designer-limpiar')?.addEventListener('click', () => {
+    state.designer = { ...DEFAULT_DESIGN };
+    setDesignerInputs(view);
+    updateDesignerPreview(view);
+  });
+  shapeSel.dataset.ready = '1';
+  setDesignerInputs(view);
+  updateDesignerPreview(view);
+}
+
+function normalizeDesign(design) {
+  return cloneDesign(design);
+}
+
+function normalizeInsignia(ins) {
+  if (!ins) return null;
+  return {
+    id: ins.id || `ins-${Math.random().toString(16).slice(2)}`,
+    alumno: ins.alumno || '',
+    tipo: ins.tipo || 'general',
+    nombre: ins.nombre || 'Insignia',
+    puntos: Number.isFinite(Number(ins.puntos)) ? Number(ins.puntos) : 0,
+    descripcion: ins.descripcion || '',
+    fecha: ins.fecha || new Date().toISOString(),
+    design: normalizeDesign(ins.design),
+  };
+}
+
+function normalizeTemplate(tpl) {
+  if (!tpl) return null;
+  return {
+    nombre: String(tpl.nombre || '').trim(),
+    puntos: Number.isFinite(Number(tpl.puntos)) ? Number(tpl.puntos) : 0,
+    tipo: String(tpl.tipo || 'general').trim() || 'general',
+    descripcion: String(tpl.descripcion || '').trim(),
+    design: normalizeDesign(tpl.design),
+  };
+}
+
 
 export function initInsignias() {
   const view = document.querySelector('#view-insignias');
@@ -29,11 +147,13 @@ export function initInsignias() {
 
   ensureUI(view);
   hydrateState();
+  setupDesigner(view);
   renderStudentOptions();
   renderTemplateOptions();
   renderFilters();
   renderSummary();
   renderList();
+  updateDesignerPreview(view);
 
   if (wired) return;
 
@@ -73,7 +193,7 @@ export function configurarAplicacionInsignias({ group, colIndex, onApply }) {
   });
 
   const dialog = createConfigDialog(savedConfig, (newConfig) => {
-    Storage.set(K.INSIG_CFG(group, colIndex), newConfig);
+    withSync(K.INSIG_CFG(group, colIndex), newConfig);
 
     const allInsignias = Storage.get(K.INSIGNIAS(group), []);
     const gradebookData = Storage.get(K.GBOOK(group), { alumnos: [] });
@@ -250,20 +370,27 @@ function hydrateState() {
   const groupInput = document.querySelector('#bz-grupo');
   let group = groupInput?.value?.trim();
   if (!group) {
-    group = Storage.get(KEY_LAST_GROUP) || extractFirstGroup();
+    const stored = Storage.get(KEY_LAST_GROUP);
+    if (stored) {
+      group = typeof stored === 'string' ? stored : stored?.value;
+    }
+    if (!group) group = extractFirstGroup();
     if (!group) group = 'GENERAL';
     if (groupInput) groupInput.value = group;
   }
   state.group = group;
-  Storage.set(KEY_LAST_GROUP, state.group);
+  persistLastGroup(state.group);
 
   const storedInsignias = Storage.get(K.INSIGNIAS(state.group), []);
-  state.insignias = Array.isArray(storedInsignias) ? storedInsignias : [];
+  state.insignias = Array.isArray(storedInsignias)
+    ? storedInsignias.map((ins) => normalizeInsignia(ins)).filter(Boolean)
+    : [];
   state.alumnos = loadAlumnos(state.group);
   state.userTemplates = loadUserTemplates();
   state.templates = computeTemplates();
   state.filters = { alumno: '', tipo: '' };
   state.lastAssigned = [];
+  state.designer = cloneDesign(state.designer);
 }
 
 function extractFirstGroup() {
@@ -300,13 +427,8 @@ function loadUserTemplates() {
   const raw = Storage.get(KEY_TEMPLATES, []);
   if (!Array.isArray(raw)) return [];
   return raw
-    .map((tpl) => ({
-      nombre: String(tpl?.nombre || '').trim(),
-      puntos: Number(tpl?.puntos) || 0,
-      tipo: String(tpl?.tipo || 'general').trim(),
-      descripcion: String(tpl?.descripcion || '').trim(),
-    }))
-    .filter((tpl) => tpl.nombre);
+    .map((tpl) => normalizeTemplate(tpl))
+    .filter((tpl) => tpl && tpl.nombre);
 }
 
 function computeTemplates() {
@@ -320,20 +442,15 @@ function computeTemplates() {
       puntos: ins?.puntos,
       tipo: ins?.tipo,
       descripcion: ins?.descripcion,
+      design: ins?.design,
     })),
   ];
   candidates.forEach((tpl) => {
-    const nombre = String(tpl?.nombre || '').trim();
-    if (!nombre) return;
-    const puntos = Number(tpl?.puntos) || 0;
-    const key = `${nombre.toLowerCase()}::${puntos}`;
+    const normalized = normalizeTemplate(tpl);
+    if (!normalized || !normalized.nombre) return;
+    const key = `${normalized.nombre.toLowerCase()}::${normalized.puntos}`;
     if (seen.has(key)) return;
-    templates.push({
-      nombre,
-      puntos,
-      tipo: String(tpl?.tipo || 'general').trim() || 'general',
-      descripcion: String(tpl?.descripcion || '').trim(),
-    });
+    templates.push(normalized);
     seen.add(key);
   });
   return templates;
@@ -377,11 +494,8 @@ function renderTemplateOptions() {
   state.templates.forEach((tpl, idx) => {
     const opt = document.createElement('option');
     opt.value = String(idx);
+    opt.dataset.index = String(idx);
     opt.textContent = `${tpl.nombre} (${formatNumber(tpl.puntos)} pts)`;
-    opt.dataset.nombre = tpl.nombre;
-    opt.dataset.puntos = String(tpl.puntos);
-    opt.dataset.tipo = tpl.tipo;
-    if (tpl.descripcion) opt.dataset.descripcion = tpl.descripcion;
     select.appendChild(opt);
   });
   if (prev && select.querySelector(`option[value="${prev}"]`)) {
@@ -390,11 +504,14 @@ function renderTemplateOptions() {
     select.value = '';
   }
 
+  const seen = new Set();
   datalist.innerHTML = '';
   state.templates.forEach((tpl) => {
+    if (seen.has(tpl.nombre)) return;
     const opt = document.createElement('option');
     opt.value = tpl.nombre;
     datalist.appendChild(opt);
+    seen.add(tpl.nombre);
   });
 }
 
@@ -494,15 +611,19 @@ function renderItem(ins) {
   const id = escapeAttr(ins?.id || '');
   const metaParts = [alumno, tipo, fecha ? escapeHtml(fecha) : ''];
   const meta = metaParts.filter(Boolean).join(' - ');
-  return `<li data-id="${id}" class="bz-item" style="padding:8px 0;border-bottom:1px solid var(--stroke,rgba(148,163,184,.4));">
-    <div class="bz-item-header" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-      <strong>${nombre}</strong>
-      <span class="bz-item-points" style="font-size:13px;opacity:.8;">${puntos} pts</span>
-    </div>
-    <div class="bz-item-meta" style="font-size:12px;opacity:.75;margin-top:2px;">${meta}</div>
-    ${descripcion}
-    <div class="bz-item-actions" style="margin-top:6px;">
-      <button type="button" class="btn btn-secondary" data-action="delete-insignia" data-id="${id}">Eliminar</button>
+  const svg = generateBadgeSVG(ins?.design);
+  return `<li data-id="${id}" class="bz-item" style="padding:8px 0;border-bottom:1px solid var(--stroke,rgba(148,163,184,.4));display:flex;gap:12px;align-items:flex-start;">
+    <span class="badge-preview" aria-hidden="true">${svg}</span>
+    <div class="bz-item-body" style="flex:1;">
+      <div class="bz-item-header" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <strong>${nombre}</strong>
+        <span class="bz-item-points" style="font-size:13px;opacity:.8;">${puntos} pts</span>
+      </div>
+      <div class="bz-item-meta" style="font-size:12px;opacity:.75;margin-top:2px;">${meta}</div>
+      ${descripcion}
+      <div class="bz-item-actions" style="margin-top:6px;display:flex;gap:8px;">
+        <button type="button" class="btn btn-secondary" data-action="delete-insignia" data-id="${id}">Eliminar</button>
+      </div>
     </div>
   </li>`;
 }
@@ -514,7 +635,7 @@ function handleAssign() {
   const groupInput = view.querySelector('#bz-grupo');
   const group = (groupInput?.value || '').trim() || 'GENERAL';
   state.group = group;
-  Storage.set(KEY_LAST_GROUP, state.group);
+  persistLastGroup(state.group);
 
   const targets = Array.from(new Set([...getSelectedStudents(), ...getManualStudents()]));
   if (!targets.length) {
@@ -536,7 +657,8 @@ function handleAssign() {
   const descripcion = view.querySelector('#bz-descripcion')?.value?.trim() || '';
   const fechaIso = new Date().toISOString();
 
-  const newBadges = targets.map((student, idx) => ({
+  const baseDesign = cloneDesign(state.designer);
+  const newBadges = targets.map((student, idx) => normalizeInsignia({
     id: `ins-${Date.now()}-${idx}-${Math.random().toString(16).slice(2)}`,
     alumno: student,
     tipo,
@@ -544,9 +666,10 @@ function handleAssign() {
     puntos,
     descripcion,
     fecha: fechaIso,
-  }));
+    design: baseDesign,
+  })).filter(Boolean);
 
-  state.insignias = [...newBadges, ...state.insignias];
+  state.insignias = [...newBadges, ...state.insignias].map((ins) => normalizeInsignia(ins)).filter(Boolean);
   saveInsignias();
   registerNewStudents(targets);
   state.lastAssigned = targets;
@@ -566,11 +689,14 @@ function handleGroupChange(e) {
   const newGroup = (e.target.value || '').trim() || 'GENERAL';
   if (newGroup === state.group) return;
   state.group = newGroup;
-  Storage.set(KEY_LAST_GROUP, state.group);
+  persistLastGroup(state.group);
 
   const storedInsignias = Storage.get(K.INSIGNIAS(state.group), []);
-  state.insignias = Array.isArray(storedInsignias) ? storedInsignias : [];
+  state.insignias = Array.isArray(storedInsignias)
+    ? storedInsignias.map((ins) => normalizeInsignia(ins)).filter(Boolean)
+    : [];
   state.alumnos = loadAlumnos(state.group);
+  state.userTemplates = loadUserTemplates();
   state.templates = computeTemplates();
   state.filters = { alumno: '', tipo: '' };
   state.lastAssigned = [];
@@ -616,38 +742,42 @@ function handleSaveTemplate() {
   const tipo = view.querySelector('#bz-tipo')?.value?.trim() || 'general';
   const descripcion = view.querySelector('#bz-descripcion')?.value?.trim() || '';
 
-  const template = { nombre, puntos, tipo, descripcion };
+  const template = normalizeTemplate({ nombre, puntos, tipo, descripcion, design: state.designer });
+  if (!template) {
+    safeNotify('error', 'No se pudo guardar la plantilla.');
+    return;
+  }
   const idx = state.userTemplates.findIndex((tpl) => tpl.nombre.toLowerCase() === template.nombre.toLowerCase());
   if (idx >= 0) {
     state.userTemplates[idx] = template;
   } else {
     state.userTemplates.push(template);
   }
-  Storage.set(KEY_TEMPLATES, state.userTemplates);
+  withSync(KEY_TEMPLATES, state.userTemplates);
   state.templates = computeTemplates();
   renderTemplateOptions();
   safeNotify('success', 'Plantilla guardada.');
 }
 
 function handleTemplateApply(e) {
-  const option = e.target.selectedOptions?.[0];
-  if (!option || !option.dataset.nombre) return;
   const view = document.querySelector('#view-insignias');
   if (!view) return;
-  const nombre = option.dataset.nombre;
-  const puntos = option.dataset.puntos;
-  const tipo = option.dataset.tipo;
-  const descripcion = option.dataset.descripcion;
-
+  const idx = Number(e.target.value || e.target.selectedOptions?.[0]?.value);
+  if (!Number.isFinite(idx)) return;
+  const tpl = state.templates[idx];
+  if (!tpl) return;
   const nameInput = view.querySelector('#bz-nombre');
   const pointsInput = view.querySelector('#bz-puntos');
   const typeInput = view.querySelector('#bz-tipo');
   const descInput = view.querySelector('#bz-descripcion');
 
-  if (nameInput) nameInput.value = nombre || '';
-  if (pointsInput && puntos != null) pointsInput.value = puntos;
-  if (typeInput && tipo != null) typeInput.value = tipo;
-  if (descInput && descripcion != null) descInput.value = descripcion;
+  if (nameInput) nameInput.value = tpl.nombre || '';
+  if (pointsInput) pointsInput.value = tpl.puntos;
+  if (typeInput) typeInput.value = tpl.tipo || 'general';
+  if (descInput) descInput.value = tpl.descripcion || '';
+  state.designer = cloneDesign(tpl.design);
+  setDesignerInputs(view, state.designer);
+  updateDesignerPreview(view);
   safeNotify('info', 'Plantilla aplicada.');
 }
 
@@ -667,7 +797,9 @@ function handleClearGroup() {
 }
 
 function saveInsignias() {
-  Storage.set(K.INSIGNIAS(state.group), state.insignias);
+  const normalized = state.insignias.map((ins) => normalizeInsignia(ins)).filter(Boolean);
+  state.insignias = normalized;
+  withSync(K.INSIGNIAS(state.group), normalized);
 }
 
 function getSelectedStudents() {

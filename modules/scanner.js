@@ -1,4 +1,4 @@
-import { Storage, K } from '../services/storage.js';
+import { Storage, K, withSync, Sync } from '../services/storage.js';
 import { abrirVisor, initVisor } from './visor.js';
 
 const KEY_EXAMS = K.EXAMS || 'atemix.exams';
@@ -7,9 +7,11 @@ const state = {
   exams: [],
   currentId: '',
   stream: null,
+  ocr: { status: 'idle', message: 'Listo para OCR.', lastText: '', engine: 'auto' },
 };
 
 let wired = false;
+const ocrEngines = [];
 
 export function initScanner() {
   const view = document.querySelector('#view-scanner');
@@ -27,6 +29,7 @@ export function initScanner() {
   loadExams();
   renderExamList();
   renderEditor();
+  renderOcrStatus();
 
   if (!wired) {
     wireEvents();
@@ -130,7 +133,10 @@ function buildStructure(root) {
               <button id="sc-export-csv" class="btn btn-secondary" type="button">Exportar CSV</button>
               <button id="sc-to-gradebook" class="btn btn-secondary" type="button">Enviar al gradebook</button>
               <button id="sc-camera-btn" class="btn" type="button">Capturar hoja</button>
+              <button id="sc-ocr-capture" class="btn" type="button">OCR captura</button>
+              <button id="sc-ocr-upload" class="btn" type="button">OCR desde imagen</button>
             </div>
+            <div id="sc-ocr-status" class="scanner-ocr-status" aria-live="polite"></div>
             <div id="sc-camera" class="scanner-camera hidden">
               <video id="sc-video" autoplay playsinline></video>
               <div style="display:flex;gap:8px;">
@@ -161,6 +167,8 @@ function wireEvents() {
   const cameraCloseBtn = document.getElementById('sc-camera-close');
   const examList = document.getElementById('sc-exam-list');
   const resultsTable = document.getElementById('sc-results-table');
+  const ocrCaptureBtn = document.getElementById('sc-ocr-capture');
+  const ocrUploadBtn = document.getElementById('sc-ocr-upload');
 
   newBtn?.addEventListener('click', createExam);
   saveBtn?.addEventListener('click', saveCurrentExam);
@@ -173,6 +181,34 @@ function wireEvents() {
   cameraBtn?.addEventListener('click', toggleCamera);
   captureBtn?.addEventListener('click', captureImage);
   cameraCloseBtn?.addEventListener('click', stopCamera);
+  ocrCaptureBtn?.addEventListener('click', () => {
+    const exam = state.exams.find((item) => item.id === state.currentId);
+    if (!exam) { notify('warn', 'Selecciona un examen primero.'); return; }
+    const capture = (exam.captures || [])[0];
+    if (!capture?.dataUrl) { notify('warn', 'No hay capturas disponibles para OCR.'); return; }
+    runOcrForExam(exam, capture.dataUrl, 'capture');
+  });
+  ocrUploadBtn?.addEventListener('click', () => {
+    const exam = state.exams.find((item) => item.id === state.currentId);
+    if (!exam) { notify('warn', 'Selecciona un examen primero.'); return; }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        runOcrForExam(exam, dataUrl, 'upload');
+      } catch (err) {
+        console.error(err);
+        notify('error', 'No se pudo leer la imagen seleccionada.');
+      } finally {
+        input.remove();
+      }
+    });
+    input.click();
+  });
   resultsTable?.addEventListener('click', handleResultsClick);
 
   examList?.addEventListener('click', (event) => {
@@ -192,7 +228,7 @@ function loadExams() {
 }
 
 function saveExams() {
-  Storage.set(KEY_EXAMS, state.exams);
+  withSync(KEY_EXAMS, state.exams);
 }
 
 function normalizeExam(raw) {
@@ -253,12 +289,16 @@ function renderEditor() {
   if (!exam) { stopCamera(); }
   if (!editor || !empty) return;
   if (!exam) {
+    setOcrStatus('idle', 'Crea un examen para usar OCR.');
     editor.classList.add('hidden');
     empty.classList.remove('hidden');
     return;
   }
   empty.classList.add('hidden');
   editor.classList.remove('hidden');
+  if (state.ocr.status !== 'working') {
+    setOcrStatus('idle', state.ocr.message || 'Listo para OCR.');
+  }
 
   document.getElementById('sc-title').value = exam.title;
   document.getElementById('sc-group').value = exam.group;
@@ -273,6 +313,7 @@ function selectExam(id) {
   state.currentId = id;
   renderExamList();
   renderEditor();
+  setOcrStatus('idle', 'Listo para OCR.');
 }
 
 function createExam() {
@@ -347,6 +388,25 @@ function deleteCurrentExam() {
   renderEditor();
   notify('success', 'Examen eliminado.');
 }
+function buildResult(exam, student, responsesText, source = 'manual') {
+  if (!student || !responsesText) return null;
+  const responses = parseResponses(responsesText, exam.questions);
+  const stats = computeScore(exam, responses);
+  return {
+    id: `res-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    student,
+    responses,
+    responsesText,
+    score: stats.score,
+    correct: stats.correct,
+    incorrect: stats.incorrect,
+    blank: stats.blank,
+    captures: [],
+    addedAt: Date.now(),
+    source,
+  };
+}
+
 function appendResult() {
   const exam = state.exams.find((item) => item.id === state.currentId);
   if (!exam) return;
@@ -362,19 +422,11 @@ function appendResult() {
     notify('warn', 'Ingresa las respuestas (ej. ABCDE).');
     return;
   }
-  const responses = parseResponses(responsesText, exam.questions);
-  const stats = computeScore(exam, responses);
-  const result = {
-    id: `res-${Date.now()}`,
-    student,
-    responses,
-    score: stats.score,
-    correct: stats.correct,
-    incorrect: stats.incorrect,
-    blank: stats.blank,
-    captures: [],
-    addedAt: Date.now(),
-  };
+  const result = buildResult(exam, student, responsesText, 'manual');
+  if (!result) {
+    notify('error', 'No se pudo construir el resultado.');
+    return;
+  }
   exam.results.push(result);
   saveExams();
   renderExamList();
@@ -684,4 +736,217 @@ function fallbackNotify(type, message) {
   else console.log(`[scanner][${type}] ${message}`);
 }
 
-export { parseAnswerKey, parseResponses, computeScore };
+function setOcrStatus(status, message) {
+  state.ocr.status = status;
+  if (isString(message)) state.ocr.message = message;
+  renderOcrStatus();
+}
+
+function renderOcrStatus() {
+  const el = document.getElementById('sc-ocr-status');
+  if (!el) return;
+  const status = state.ocr.status;
+  const message = state.ocr.message || '';
+  if (!status || status === 'idle') {
+    el.textContent = message;
+    return;
+  }
+  if (status === 'working') {
+    el.textContent = message || 'Procesando OCR…';
+  } else if (status === 'done') {
+    el.textContent = message || 'OCR completado';
+  } else if (status === 'error') {
+    el.textContent = message || 'OCR falló';
+  } else {
+    el.textContent = message;
+  }
+}
+
+function isString(value) {
+  return typeof value === 'string' || value instanceof String;
+}
+
+export function registerOcrEngine(engine) {
+  if (!engine || typeof engine.recognize !== 'function') {
+    throw new Error('OCR engine inválido');
+  }
+  ocrEngines.push(engine);
+}
+
+function getOcrEndpoint() {
+  const cfg = Sync?.getConfig?.();
+  if (!cfg?.endpoints) return '';
+  return cfg.endpoints.ocr || cfg.endpoints.cloud_ocr || cfg.endpoints.cloud || '';
+}
+
+async function runRemoteOcr(dataUrl, hint) {
+  const endpoint = getOcrEndpoint();
+  if (!endpoint || typeof fetch !== 'function') return '';
+  const headers = { 'Content-Type': 'application/json' };
+  const cfg = Sync?.getConfig?.();
+  const token = cfg?.tokens?.ocr || cfg?.tokens?.cloud;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ image: dataUrl, hint }),
+  });
+  if (!res.ok) throw new Error(`OCR HTTP ${res.status}`);
+  const payload = await res.json();
+  return payload?.text || payload?.data?.text || '';
+}
+
+function fallbackPromptOcr(hint) {
+  if (typeof window === 'undefined' || typeof window.prompt !== 'function') return '';
+  const context = hint?.questions ? ` (${hint.questions} preguntas)` : '';
+  return window.prompt(`Ingresa manualmente las respuestas${context}:`, '') || '';
+}
+
+async function runOcr(dataUrl, { hint } = {}) {
+  for (const engine of ocrEngines) {
+    try {
+      const text = await engine.recognize(dataUrl, { hint });
+      if (text) return text;
+    } catch (err) {
+      console.warn('[scanner] OCR engine falló', err);
+    }
+  }
+  try {
+    const remoteText = await runRemoteOcr(dataUrl, hint);
+    if (remoteText) return remoteText;
+  } catch (err) {
+    console.warn('[scanner] OCR remoto falló', err);
+  }
+  return fallbackPromptOcr(hint);
+}
+
+function sanitizeResponses(text, expected) {
+  if (!text) return '';
+  const clean = String(text).replace(/[^A-Za-z]/g, '').toUpperCase();
+  if (!expected || !Number.isFinite(expected)) return clean;
+  return clean.slice(0, expected);
+}
+
+export function parseOcrEntries(text, exam) {
+  const entries = [];
+  const lines = String(text || '')
+    .split(/
+?
+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  let current = { student: '', responses: '' };
+  const pushCurrent = () => {
+    const student = current.student.trim();
+    const responses = sanitizeResponses(current.responses, exam?.questions);
+    if (student && responses) entries.push({ student, responses });
+    current = { student: '', responses: '' };
+  };
+  lines.forEach((line) => {
+    const lower = line.toLowerCase();
+    if (/(alumno|nombre)/.test(lower)) {
+      const value = line.split(/[:=]/)[1]?.trim() || '';
+      if (current.student || current.responses) pushCurrent();
+      current.student = value || current.student;
+      return;
+    }
+    if (/(respuestas|answers)/.test(lower)) {
+      const value = line.split(/[:=]/)[1]?.trim() || '';
+      current.responses = value || current.responses;
+      return;
+    }
+    if (/[,;|]/.test(line)) {
+      const parts = line.split(/[,;|]/).map((p) => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        pushCurrent();
+        current.student = parts[0];
+        current.responses = parts[1];
+        pushCurrent();
+        return;
+      }
+    }
+    if (!current.student) {
+      current.student = line;
+    } else if (!current.responses) {
+      current.responses = line;
+    } else {
+      current.responses += line;
+    }
+  });
+  pushCurrent();
+  return entries;
+}
+
+async function runOcrForExam(exam, dataUrl, origin = 'capture') {
+  if (!exam) {
+    notify('warn', 'Selecciona un examen primero.');
+    return;
+  }
+  if (!dataUrl) {
+    notify('warn', 'No hay imagen disponible para OCR.');
+    return;
+  }
+  setOcrStatus('working', origin === 'upload' ? 'Procesando imagen…' : 'Analizando captura…');
+  try {
+    const hint = { group: exam.group, questions: exam.questions, origin };
+    const text = await runOcr(dataUrl, { hint });
+    state.ocr.lastText = text || '';
+    if (!text) {
+      setOcrStatus('idle', 'OCR sin resultados.');
+      notify('warn', 'No se detectó texto legible.');
+      return;
+    }
+    const entries = parseOcrEntries(text, exam);
+    if (!entries.length) {
+      setOcrStatus('idle', 'No se encontraron respuestas.');
+      notify('warn', 'El OCR no pudo extraer respuestas válidas.');
+      return;
+    }
+    const outcomes = applyOcrEntries(exam, entries);
+    const applied = outcomes.filter((o) => o.status === 'ok').length;
+    saveExams();
+    renderResultsTable(exam);
+    renderExamList();
+    setOcrStatus('done', `OCR completado (${applied}/${entries.length})`);
+    notify('success', `OCR procesó ${applied} de ${entries.length} entradas.`);
+  } catch (err) {
+    console.error(err);
+    setOcrStatus('error', 'Error al ejecutar OCR');
+    notify('error', 'No se pudo ejecutar el OCR.');
+  }
+}
+
+function applyOcrEntries(exam, entries) {
+  return entries.map((entry) => registerResultFromOcr(exam, entry));
+}
+
+function registerResultFromOcr(exam, entry) {
+  const student = String(entry?.student || '').trim();
+  const responsesRaw = sanitizeResponses(entry?.responses || entry?.answers || '', exam?.questions);
+  if (!student || !responsesRaw) return { status: 'skip', reason: 'datos incompletos' };
+  const result = buildResult(exam, student, responsesRaw, 'ocr');
+  if (!result) return { status: 'error', reason: 'build-failed' };
+  const idx = exam.results.findIndex((r) => String(r.student || '').toLowerCase() === student.toLowerCase());
+  if (idx >= 0) {
+    exam.results[idx] = result;
+  } else {
+    exam.results.unshift(result);
+  }
+  return { status: 'ok', result };
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error('No file provided'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('No se pudo leer el archivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export { registerOcrEngine, parseOcrEntries, parseAnswerKey, parseResponses, computeScore };
+
