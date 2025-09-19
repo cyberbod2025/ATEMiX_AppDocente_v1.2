@@ -1,0 +1,22 @@
+[
+  {
+    "fase": "2",
+    "campo": "Lenguajes",
+    "grado": "1",
+    "contenidos": [
+      {
+        "uac": "Comunicación de necesidades, emociones, gustos, ideas y saberes a través de los diversos lenguajes, desde una perspectiva comunitaria",
+        "pda": [
+          "Emplea palabras, gestos, señas, imágenes, sonidos o movimientos corporales que aprende en su comunidad para expresar necesidades, ideas, emociones y gustos que reflejan su forma de interpretar y actuar en el mundo. Reconoce que cuando juega y socializa con sus pares, se expresan desde sus posibilidades, vivencias y cultura.",
+          "Manifiesta de manera clara necesidades, emociones, gustos, preferencias e ideas, que construye en la convivencia diaria, y se da a entender usando distintos lenguajes. Escucha con atención, se interesa por lo que las otras personas expresan e intercambia ideas esperando su turno para hablar.",
+          "Expresa ideas completas sobre necesidades, vivencias, emociones, gustos, preferencias y saberes a distintas personas, a través de distintos lenguajes. Comprende, al interactuar con las demás personas, que existen diversas formas de comunicarse."
+        ],
+        "saberes": [
+          "Comunicación de necesidades, emociones, gustos, ideas y saberes",
+          "Lenguajes orales, escritos y gestuales",
+          "Cultura y comunidad"
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "appId": "com.atemix.app",
+  "appName": "atemix",
+  "webDir": "\u0016\u0016",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

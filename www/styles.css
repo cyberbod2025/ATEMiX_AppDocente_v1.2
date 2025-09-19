@@ -1,0 +1,307 @@
+/* === AtemiMX · Estilo base (mexicano futurista) === */
+:root{
+  --bg:#0b1220;         /* azul noche */
+  --panel:#0f172a;      /* panel */
+  --panel-2:#0a1426;
+  --text:#e5e7eb;       /* texto claro */
+  --muted:#94a3b8;      /* texto tenue */
+  --primary:#00FF6A;    /* jade / neón */
+  --accent:#e11d48;     /* bugambilia/guinda */
+  --stroke:#334155;     /* borde frío */
+  --shadow:0 10px 25px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family: Inter, Segoe UI, system-ui, -apple-system, sans-serif;
+  background:linear-gradient(180deg, var(--bg), #0b1324 35%, #0b1324);
+  color:var(--text); -webkit-font-smoothing:antialiased; line-height:1.35;
+}
+
+/* Layout */
+#main-app{display:grid; grid-template-columns: 260px 1fr; min-height:100vh;}
+#app-header{
+  grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; background:linear-gradient(180deg, #0e1a33, #0b1429);
+  border-bottom:1px solid var(--stroke); position:sticky; top:0; z-index:20;
+}
+.brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.3px}
+#app-sidebar{
+  border-right:1px solid var(--stroke); padding:16px; background:var(--panel-2);
+}
+#app-content{padding:20px;}
+
+/* Top tabs */
+.tabs{list-style:none;margin:0;padding:0;display:flex;gap:8px;align-items:center}
+.tabs li a{display:block;padding:.4rem .7rem;border:1px solid var(--stroke);border-radius:10px;color:var(--text);text-decoration:none;background:#0b1429}
+.tabs li.active a,.tabs li a:hover{border-color:var(--primary)}
+
+/* Status bar chips */
+#status-bar{display:flex;gap:6px;align-items:center}
+.status-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--stroke);border-radius:999px;padding:.2rem .5rem;font-size:12px;background:#0a1426;color:var(--muted)}
+
+/* Navegación lateral */
+#app-sidebar nav ul{list-style:none; padding:0; margin:0; display:grid; gap:6px;}
+#app-sidebar nav a{
+  display:block; padding:.65rem .8rem; border:1px solid transparent;
+  border-radius:12px; color:var(--text); text-decoration:none; cursor:pointer;
+  background:transparent; transition:.2s ease;
+}
+#app-sidebar nav a:hover{border-color:var(--stroke); background:#0f1b36}
+#app-sidebar nav a.active, #app-sidebar nav a[aria-current="page"]{
+  outline:2px solid var(--primary); background:#0e1a33; box-shadow: inset 0 0 0 1px #133, var(--shadow);
+}
+#app-sidebar nav a[data-disabled]{opacity:.45; pointer-events:none; position:relative}
+#app-sidebar nav a[data-disabled]::after{content:"Completa el Onboarding"; position:absolute; left:100%; top:50%; transform:translate(8px,-50%); white-space:nowrap; font-size:11px; color:var(--muted); opacity:.9}
+
+/* Vistas / tarjetas */
+.hidden{display:none !important;}
+.content-view{background:var(--panel); border:1px solid var(--stroke); border-radius:14px; padding:16px; box-shadow: var(--shadow);}
+.card{background:var(--panel); border:1px solid var(--stroke); border-radius:14px; padding:14px}
+
+/* Controles */
+.btn{appearance:none; border-radius:10px; border:1px solid var(--stroke); padding:.6rem .9rem; color:var(--text); background:#101b33; cursor:pointer}
+.btn:hover{filter:brightness(1.05)}
+.btn-primary{border-color:transparent; background:linear-gradient(180deg, #0adf78, #07c764); color:#052814; font-weight:700}
+.btn-secondary{background:#1a243d}
+.input-field,.select-field{
+  width:100%; border:1px solid var(--stroke); background:#0b1429; color:var(--text);
+  padding:.55rem .7rem; border-radius:10px; outline:none;
+}
+.input-field:focus,.select-field:focus{border-color:var(--primary); box-shadow:0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent)}
+
+/* Toasts */
+#toast-root{position:fixed; right:14px; bottom:14px; display:flex; flex-direction:column; gap:8px; z-index:100}
+.toast{background:#0b1429; border:1px solid var(--stroke); color:var(--text); padding:.6rem .8rem; border-radius:12px; box-shadow: var(--shadow); opacity:0; transform: translateY(8px); transition: all .25s ease}
+.toast.show{opacity:1; transform: translateY(0)}
+.toast.success{border-color:#16a34a}
+.toast.warn{border-color:#f59e0b}
+.toast.error{border-color:#ef4444}
+
+/* Banner */
+.banner{position:fixed; top:56px; left:50%; transform:translateX(-50%); background:#0b1429; border:1px solid var(--stroke); color:var(--text); padding:.5rem .8rem; border-radius:10px; z-index:60}
+.banner.warn{border-color:#f59e0b}
+.banner.error{border-color:#ef4444}
+
+/* Splash */
+#splash-screen{position:fixed; inset:0; display:grid; place-items:center; background:radial-gradient(1200px 600px at 50% -10%, rgba(0,255,106,.08), transparent 70%), var(--bg); z-index:50; transition:opacity .35s}
+#splash-screen.splash-hide{opacity:0; pointer-events:none}
+.splash-iso{width:84px; height:84px; border-radius:50%; background:#ffffff12; padding:10px}
+.splash-title{margin:.6rem 0 .2rem 0}
+.splash-sub{margin:0; color:var(--muted)}
+
+/* Listas del catálogo/planeación */
+.cat-item{border:1px solid var(--stroke); border-radius:10px; padding:.7rem; margin:.5rem 0; background:#0a1226}
+.cat-item.selected{outline:2px solid var(--primary)}
+.plan-card{border:1px dashed var(--stroke); border-radius:10px; padding:.8rem; margin:.6rem 0; background:#0f172a}
+
+/* Utilidades */
+.row{display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px}
+@media (max-width:900px){
+  #main-app{grid-template-columns: 1fr}
+  #app-sidebar{position:sticky; top:56px; z-index:15}
+  .row{grid-template-columns:1fr}
+}
+
+/* Empty states */
+.empty-state{display:flex;gap:16px;align-items:center;justify-content:flex-start;border:1px dashed var(--stroke);border-radius:14px;padding:16px;background:#0a1426}
+.empty-icon{font-size:32px}
+.empty-actions{display:flex;gap:8px;margin-left:auto}
+
+/* Log drawer */
+.log-drawer{position:fixed; right:0; top:56px; bottom:0; width:360px; background:var(--panel); border-left:1px solid var(--stroke); box-shadow: var(--shadow); z-index:70; transform: translateX(100%); transition: transform .25s ease}
+.log-drawer.open{transform: translateX(0)}
+.log-drawer.hidden{display:none}
+.log-drawer .log-drawer-inner{height:100%; display:flex; flex-direction:column; padding:10px}
+.log-drawer .log-list{list-style:decimal; padding-left:18px; overflow:auto; flex:1; margin-top:10px}
+
+/* Modal (cheatsheet) */
+.modal{position:fixed; inset:0; display:none; z-index:90}
+.modal.open{display:block}
+.modal-backdrop{position:absolute; inset:0; background:rgba(0,0,0,.55)}
+.modal-card{position:relative; width:min(520px, 92vw); margin:10vh auto; background:var(--panel); border:1px solid var(--stroke); border-radius:14px; padding:12px}
+.modal-card header{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+
+/* Estilos para Seating (Aula) e Insignias */
+.seating-grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));}
+.seat{border:1px solid var(--stroke);border-radius:12px;padding:.6rem;background:#0a1426;position:relative}
+.seat.selected{outline:2px solid var(--primary)}
+.seat .name{font-weight:600}
+.seat .note{font-size:12px;color:var(--muted)}
+.seat .part{position:absolute;right:8px;bottom:8px;font-size:12px;opacity:.9}
+.insig-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--stroke);border-radius:999px;padding:.2rem .5rem;font-size:12px}
+
+/* --- Estilos de Impresión --- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-container, #print-container * {
+    visibility: visible;
+  }
+  #print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .report-page {
+    page-break-after: always;
+    font-family: sans-serif;
+    color: #000;
+    background: #fff;
+  }
+  .report-header, .report-footer, .report-summary, .report-details, .report-info {
+    padding: 1cm;
+  }
+  .report-header {
+    text-align: center;
+    border-bottom: 2px solid #ccc;
+  }
+  .report-footer {
+    display: flex;
+    justify-content: space-around;
+    border-top: 2px solid #ccc;
+    padding-top: 2rem;
+    font-size: 0.8em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+  .brand { font-weight: bold; }
+  .signature-box { text-align: center; }
+  /* Forzar la impresión de fondos y colores en navegadores WebKit */
+  -webkit-print-color-adjust: exact; 
+  print-color-adjust: exact;
+}
+
+/* --- Estilos Planner y Visor --- */
+#calendar-container ul { margin-top: 1rem; }
+#calendar-container li { background: var(--panel-2); padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; }
+
+#atemix-viewer {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.8);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#atemix-viewer.hidden { display: none; }
+.viewer-overlay { position: absolute; inset: 0; }
+.viewer-content { position: relative; width: 90%; height: 90%; max-width: 1200px; }
+.viewer-media-container {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.viewer-media-container img, .viewer-media-container video, .viewer-media-container object {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.viewer-close, .viewer-prev, .viewer-next {
+  position: absolute;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 2rem;
+  z-index: 101;
+}
+.viewer-close { top: 10px; right: 10px; width: 40px; height: 40px; }
+.viewer-prev { left: 10px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; }
+.viewer-next { right: 10px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; }
+
+/* Hotfix de visibilidad */
+#main-app.visible{ display: grid; }  /* asegura que se muestre el layout */
+.hidden{ display: none !important; } /* ya la tienes, pero reafirmamos */
+
+.insignia-designer.card {
+  background: var(--panel, rgba(15,23,42,0.45));
+  border: 1px solid var(--stroke, rgba(148,163,184,0.25));
+  border-radius: 16px;
+}
+
+.insignia-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  border: 2px dashed rgba(148,163,184,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15,23,42,0.35);
+  min-width: 120px;
+}
+
+.insignia-preview svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cat-detalle {
+  min-height: 160px;
+  padding: 12px;
+  font-size: 0.875rem;
+}
+
+.cat-detalle h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.cat-detalle ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.cat-lista li {
+  cursor: pointer;
+  border-bottom: 1px solid rgba(148,163,184,0.18);
+  padding: 8px 4px;
+}
+
+.cat-lista li.selected {
+  background: rgba(14,165,120,0.12);
+}
+
+#bz-list .badge-preview {
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15,23,42,0.25);
+  overflow: hidden;
+}
+
+#bz-list .badge-preview svg {
+  width: 100%;
+  height: 100%;
+}
+
+#bz-list .bz-item {
+  list-style: none;
+}
+
+#bz-list .bz-item-body {
+  flex: 1;
+}
+
+.scanner-ocr-status {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 6px;
+}

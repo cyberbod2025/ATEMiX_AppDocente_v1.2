@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "fases": {
+    "6": {
+      "campos": {
+        "Saberes y Pensamiento Científico": {
+          "grados": {
+            "1": {
+              "contenidos": [
+                {"id":"sypc-mat-1-01","titulo":"Proporcionalidad y porcentajes","pda":["Razones y descuentos","Representaciones múltiples"],"criterios":["Resuelve problemas en contexto"],"competencias":["Pensamiento matemático"]},
+                {"id":"sypc-mat-1-02","titulo":"Escalas y planos","pda":["Interpretación de planos","Comunicación matemática"],"criterios":["Usa escalas simples"],"competencias":["Modelación"]}
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

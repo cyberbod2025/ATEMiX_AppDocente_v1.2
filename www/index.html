@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AtemiMX - App Docente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#00e676">
+  <link rel="apple-touch-icon" href="assets/atemi-logo.svg">
+</head>
+<body>
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen" aria-label="Bienvenida" role="status">
+    <img src="assets/atemi-iso.svg" alt="ISO AtemiMX" class="splash-iso" />
+    <h1 class="splash-title">AtemiMX - App Docente</h1>
+    <p class="splash-sub">AtemiMX — disponible sin conexión</p>
+  </div>
+
+  <!-- APP PRINCIPAL -->
+  <div id="main-app" class="hidden">
+    <header id="app-header">
+      <div class="brand" style="display:flex;align-items:center;gap:10px">
+        <img src="assets/atemi-iso.svg" alt="ISO" style="width:34px;height:34px;border-radius:50%;object-fit:contain;background:#ffffff1a">
+        <span style="font-weight:700;letter-spacing:.3px">AtemiMX</span>
+      </div>
+      <nav aria-label="Pestañas" style="flex:1; margin: 0 12px;">
+        <ul id="top-tabs" class="tabs">
+          <li data-route="gradebook"><a href="#/gradebook" aria-label="Ir a Gradebook">📘 Gradebook</a></li>
+          <li data-route="catalogo"><a href="#/catalogo" aria-label="Ir a Catálogo">📚 Catálogo</a></li>
+          <li data-route="planeacion"><a href="#/planeacion" aria-label="Ir a Planeación">🗂 Planeación</a></li>
+          <li data-route="seating"><a href="#/seating" aria-label="Ir a Aula">🏫 Aula</a></li>
+          <li data-route="recursos"><a href="#/recursos" aria-label="Ir a Recursos">?? Recursos</a></li>
+          <li data-route="scanner"><a href="#/scanner" aria-label="Ir a Scanner">?? Scanner</a></li>
+          <li data-route="reportes"><a href="#/reportes" aria-label="Ir a Reportes">📈 Reportes</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions" style="display:flex;align-items:center;gap:8px">
+        <div id="status-bar" aria-live="polite"></div>
+        <button class="btn" id="btn-log" title="🧾 Bitácora" aria-label="Abrir Bitácora">🧾 Bitácora</button>
+        <button class="btn" id="btn-install" style="display:none;">📲 Instalar App</button>
+        <button class="btn btn-primary" id="btn-reset">Reiniciar Onboarding</button>
+      </div>
+    </header>
+
+    <aside id="app-sidebar">
+      <nav>
+        <ul>
+          <li><a href="#" data-view="onboarding">?? Onboarding</a></li>
+          <li><a href="#" data-view="catalogo">?? Catálogo NEM</a></li>
+          <li><a href="#" data-view="planeacion">?? Planeación</a></li>
+          <li><a href="#" data-view="gradebook">?? Calificaciones</a></li>
+          <li><a href="#" data-view="rubricas">?? Rúbricas</a></li>
+          <li><a href="#" data-view="insignias">?? Insignias</a></li>
+          <li><a href="#" data-view="recursos">?? Recursos</a></li>
+          <li><a href="#" data-view="diario">??? Diario NEM</a></li>
+          <li><a href="#" data-view='seating'>🧑‍🏫 Aula</a></li>
+          <li><a href="#" data-view='planner'>🗓️ Planner</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main id="app-content">
+      <!-- VISTA ONBOARDING -->
+      <div id="view-onboarding" class="content-view card">
+        <h2>Configuración Inicial</h2>
+        <p style="opacity: 0.7; margin-bottom: 1.5rem;">Completa tus datos para personalizar la experiencia.</p>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="docente">Nombre del Docente</label><input id="docente" placeholder="Ej. Hugo Sánchez" class="input-field" /></div>
+          <div><label for="escuela">Escuela</label><input id="escuela" placeholder="Ej. Secundaria Técnica 310" class="input-field" /></div>
+        </div>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="ciclo">Ciclo Escolar</label><input id="ciclo" placeholder="2025-2026" class="input-field" /></div>
+          <div><label for="fase">Fase</label><input id="fase" type="number" min="2" max="6" placeholder="Ej. 6" class="input-field" /></div>
+        </div>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="grados">Grados (separados por coma)</label><input id="grados" placeholder="1, 2, 3" class="input-field" /></div>
+          <div><label for="grupos">Grupos (separados por coma)</label><input id="grupos" placeholder="1A, 1B, 2C" class="input-field" /></div>
+        </div>
+        <div class="row" style="margin-bottom: 1.5rem;">
+          <div><label for="campos">Campos Formativos (separados por coma)</label><input id="campos" placeholder="Saberes y Pensamiento Científico" class="input-field" /></div>
+          <div><label for="ejes">Ejes Articuladores (separados por coma)</label><input id="ejes" placeholder="Inclusión, Pensamiento crítico" class="input-field" /></div>
+        </div>
+        <input id="estilo" type="hidden" />
+        <button id="btnGuardarOnboarding" class="btn btn-primary">Guardar y Continuar</button>
+      </div>
+
+      <!-- VISTA Catálogo -->
+      <div id="view-catalogo" class="content-view card hidden">
+        <h2>Catálogo de Contenidos (NEM)</h2>
+        <div class="row" style="margin-bottom: 1rem;">
+          <div><label for="cat-fase">Fase</label><select id="cat-fase" class="select-field"></select></div>
+          <div><label for="cat-campo">Campo Formativo</label><select id="cat-campo" class="select-field"></select></div>
+          <div><label for="cat-grado">Grado</label><select id="cat-grado" class="select-field"></select></div>
+        </div>
+                <div class="row" id="cat-tools" style="margin-bottom: 1rem; gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:220px;"><label for="cat-search">Buscar</label><input id="cat-search" class="input-field" placeholder="Buscar saberes por palabra clave" /></div>
+          <div style="width:220px;"><label for="cat-etiqueta">Etiqueta</label><select id="cat-etiqueta" class="select-field"><option value="">Todas</option></select></div>
+          <div style="width:220px;"><label for="cat-orden">Ordenar</label><select id="cat-orden" class="select-field"><option value="default">Catálogo</option><option value="alf">Alfabético</option><option value="etiqueta">Por etiqueta</option></select></div>
+        </div>
+        <div id="cat-layout" style="display:grid;gap:14px;grid-template-columns:minmax(260px,1fr) minmax(220px,0.8fr);align-items:start;">
+          <ol id="cat-lista" class="cat-lista"></ol>
+          <div id="cat-detalle" class="cat-detalle card" aria-live="polite"></div>
+        </div>
+        <button id="cat-add" class="btn btn-primary" style="margin-top:1rem">Añadir a Planeación</button>
+        <p style="font-size:12px;color:#cbd5e1;margin-top:1rem;opacity:0.7;">Tip: haz clic en los contenidos para seleccionarlos y revisa el panel de detalle para antecedentes NEM.</p>
+
+      </div>
+
+      <!-- VISTA Planeación -->
+      <div id="view-planeacion" class="content-view card hidden">
+        <h2>Resumen de Planeación</h2>
+        <div id="plan-resumen"></div>
+        <button id="plan-export" class="btn btn-secondary" style="margin-top:1rem">Exportar como JSON</button>
+      </div>
+
+      <!-- GRADEBOOK -->
+      <div id="view-gradebook" class="content-view card hidden">
+        <h2>Libro de Calificaciones (Mi Progreso NEM)</h2>
+        <div class="row" style="gap:12px">
+          <div><label for="gb-grupo">Grupo</label><input id="gb-grupo" class="input-field" placeholder="1A"></div>
+        </div>
+        <div class="row" style="gap:12px;margin-top:8px">
+          <div style="flex:1"><label for="gb-alumnos">Alumnos (uno por línea)</label><textarea id="gb-alumnos" rows="6" class="input-field" placeholder="María L.
+Gabriel R."></textarea></div>
+          <div style="flex:1"><label for="gb-actividades">Actividades (Título,Porcentaje, Criterio/Saber opcional)</label><textarea id="gb-actividades" rows="6" class="input-field" placeholder="Proyecto Agua,30,Competencia cívica
+Resolución de problemas,70,Pensamiento matemático"></textarea></div>
+        </div>
+        <button id="gb-generar" class="btn btn-primary" style="margin-top:8px">Generar tabla</button>
+        <div id="gb-actions" style="display:none;gap:8px;margin:10px 0"></div>
+        <div id="gb-tabla" style="overflow:auto"></div>
+      </div>
+
+      <!-- Rúbricas -->
+      <div id="view-rubricas" class="content-view card hidden">
+        <h2>Rúbricas (Auto/Co-evaluación NEM)</h2>
+        <div class="row" style="gap:12px">
+          <div><label for="rb-grupo">Grupo</label><input id="rb-grupo" class="input-field" placeholder="1A"></div>
+          <div style="flex:1"><label for="rb-nombre">Nombre</label><input id="rb-nombre" class="input-field" placeholder="Rúbrica Pensamiento crítico"></div>
+        </div>
+        <div class="row" style="gap:12px;margin-top:8px">
+          <div style="flex:1"><label for="rb-criterios">Criterios (uno por línea)</label><textarea id="rb-criterios" rows="6" class="input-field" placeholder="Argumenta con evidencia
+Colabora con respeto"></textarea></div>
+          <div style="flex:1"><label for="rb-niveles">Niveles (separados por coma)</label><textarea id="rb-niveles" rows="6" class="input-field" placeholder="Inicial,En proceso,Satisfactorio,Destacado"></textarea></div>
+        </div>
+        <button id="rb-guardar" class="btn btn-primary" style="margin-top:8px">Guardar rúbrica</button>
+        <ol id="rb-list" style="margin-top:10px"></ol>
+      </div>
+
+      <!-- INSIGNIAS -->
+      <div id="view-insignias" class="content-view card hidden">
+        <h2>Insignias Digitales (Reconocimientos MX)</h2>
+        <div class="row" style="gap:12px">
+          <div><label for="bz-grupo">Grupo</label><input id="bz-grupo" class="input-field" placeholder="1A"></div>
+          <div><label for="bz-nombre">Nombre de la insignia</label><input id="bz-nombre" class="input-field" placeholder="Líder comunitario"></div>
+          <div><label for="bz-puntos">Puntos</label><input id="bz-puntos" type="number" value="5" class="input-field"></div>
+        </div>
+        <div id="bz-designer" class="insignia-designer card" style="margin:12px 0;">
+          <div class="row" style="gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;"><label for="bz-forma">Forma</label><select id="bz-forma" class="select-field"><option value="medalla">Medalla</option><option value="escudo">Escudo</option><option value="estrella">Estrella</option><option value="banderin">Banderín</option></select></div>
+            <div style="width:160px;"><label for="bz-color">Color principal</label><input id="bz-color" type="color" class="input-field" value="#0ea5a5" /></div>
+            <div style="width:160px;"><label for="bz-acento">Acento</label><input id="bz-acento" type="color" class="input-field" value="#1e293b" /></div>
+            <div style="flex:1;min-width:180px;"><label for="bz-icon">Símbolo</label><input id="bz-icon" class="input-field" placeholder="⭐" maxlength="2" /></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap;">
+            <div id="bz-designer-preview" class="insignia-preview" aria-label="Previsualización de insignia"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="bz-designer-guardar" class="btn btn-secondary" type="button">Guardar como plantilla</button>
+              <button id="bz-designer-limpiar" class="btn" type="button">Limpiar diseño</button>
+            </div>
+          </div>
+        </div>
+        <button id="bz-asignar" class="btn btn-primary" style="margin-top:8px">Asignar a alumno.</button>
+        <ol id="bz-list" style="margin-top:10px"></ol>
+      </div>
+
+      <!-- RECURSOS -->
+      <div id="view-recursos" class="content-view card hidden">
+        <h2>Biblioteca de Recursos</h2>
+        <p style="opacity:0.75;margin-bottom:1rem;">Organiza PDFs, videos, enlaces y materiales de tu clase NEM.</p>
+        <div id="recursos-root"></div>
+      </div>
+      <!-- DIARIO -->
+      <div id="view-diario" class="content-view card hidden">
+        <h2>Diario y Planeador NEM</h2>
+        <div class="row" style="gap:12px">
+          <div><label for="dj-fecha">Fecha</label><input id="dj-fecha" class="input-field" type="date"></div>
+          <div><label for="dj-grupo">Grupo</label><input id="dj-grupo" class="input-field" placeholder="1A"></div>
+        </div>
+        <div class="row" style="gap:12px;margin-top:8px">
+          <div style="flex:1"><label for="dj-nota">Nota / Evidencia</label><textarea id="dj-nota" rows="5" class="input-field" placeholder="Registro de clase, actividad, acuerdos de convivencia."></textarea></div>
+          <div style="flex:1"><label for="dj-adjunto">Adjunto (URL)</label><input id="dj-adjunto" class="input-field" placeholder="https://."></div>
+        </div>
+        <button id="dj-guardar" class="btn btn-primary" style="margin-top:8px">Guardar entrada</button>
+        <ol id="dj-list" style="margin-top:10px"></ol>
+      </div>
+      
+      <!-- VISTA REPORTES -->`n      <div id="view-reportes" class="content-view card hidden">`n        <h2>Reportes y Exportaciones</h2>`n        <p style="opacity:0.75;margin-bottom:1rem;">Genera reportes por alumno o clase en PDF/XLS y consulta eventos de sincronizacion.</p>`n        <div id="reportes-root"></div>`n      </div>`n      <!-- VISTA AULA -->
+      <div id='view-seating' class='content-view card hidden'><h2>Aula</h2><div id='seating-root'></div></div>
+
+      <!-- VISTA PLANNER -->
+      <div id='view-planner' class='content-view card hidden'><h2>Planner</h2><div id='planner-root'></div></div>
+    </main>
+  </div>
+
+  
+  <!-- Log Drawer (Bitácora) -->
+  <div id="log-drawer" class="log-drawer hidden" role="complementary" aria-label="Bitácora">
+    <div class="log-drawer-inner">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <strong>Bitácora</strong>
+        <button id="log-close" class="btn" aria-label="Cerrar">×</button>
+      </div>
+      <ol class="log-list"></ol>
+    </div>
+  </div>
+
+  <script type="module">
+  // === AtemiMX — Boot + Router ===
+  import { initRouter, go } from './modules/router.js';
+  import { notify, toggleLog } from './modules/ui.js';
+  import { Storage, K } from './services/storage.js';
+
+  const mainApp  = document.getElementById('main-app');
+  const splash   = document.getElementById('splash-screen');
+
+  // Wire bitácora toggle
+  document.getElementById('btn-log')?.addEventListener('click', toggleLog);
+  document.getElementById('log-close')?.addEventListener('click', toggleLog);
+
+  function revealApp(){
+    splash?.classList.add('splash-hide');
+    mainApp?.classList.add('visible');
+    mainApp?.classList.remove('hidden');
+  }
+
+  function boot(){
+    try {
+      initRouter();
+      const cfg = Storage.get(K.CONFIG);
+      if (location.hash === '' || location.hash === '#/') {
+        if (cfg) go('gradebook'); else go('onboarding');
+      }
+      if (cfg) { document.querySelectorAll('#app-sidebar nav a[data-disabled]')?.forEach(a=>a.removeAttribute('data-disabled')); }
+      document.addEventListener('atemix:onboarding:ready', ()=>{ document.querySelectorAll('#app-sidebar nav a[data-disabled]')?.forEach(a=>a.removeAttribute('data-disabled')); });
+    } catch(e){ console.error('[AtemiMX] boot error', e); notify('error','Error al iniciar'); }
+    revealApp();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  </script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+      .then(reg => console.log("SW registrado:", reg))
+      .catch(err => console.error("Error SW:", err));
+  }
+</script>
+</body>
+</html>

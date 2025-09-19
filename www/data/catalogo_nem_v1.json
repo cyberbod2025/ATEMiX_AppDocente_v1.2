@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "fases": {
+    "6": {
+      "campos": {
+        "Saberes y Pensamiento Científico": {
+          "grados": {
+            "1": {
+              "contenidos": [
+                {
+                  "id": "sypc-mat-1-01",
+                  "titulo": "Nociones de proporcionalidad y porcentajes en contextos cotidianos",
+                  "pda": [
+                    "Resuelve problemas con razones, porcentajes y descuentos en situaciones escolares y comunitarias",
+                    "Usa representaciones múltiples (tabla, gráfica, fracción, decimal)"
+                  ],
+                  "sugerencias": ["Contextualizar con economía familiar", "Conectar con Ética y Sociedades"]
+                },
+                {
+                  "id": "sypc-mat-1-02",
+                  "titulo": "Uso de escala y razones en planos sencillos",
+                  "pda": [
+                    "Interpreta y construye planos con escalas simples",
+                    "Comunica resultados con lenguaje matemático"
+                  ],
+                  "sugerencias": ["Mapas del barrio/escuela", "Proyecto Guardianes del Agua"]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
