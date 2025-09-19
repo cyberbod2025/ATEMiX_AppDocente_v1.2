@@ -14,6 +14,7 @@ export const K={
   SEATING_LAST: g => `atemix.seating.last.${g}`,
   PART: g => `atemix.part.${g}`,
   INSIGNIAS: g => `atemix.insignias.${g}`,
+  PLANNER: g => `atemix.planner.${g}`,
   INSIG_CFG: (g,c) => `atemix.insignias.cfg.${g}.${c}`,
   LOG: g => `atemix.log.${g}`
 };

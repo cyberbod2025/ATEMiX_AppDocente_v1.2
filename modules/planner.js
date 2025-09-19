@@ -1,6 +1,5 @@
 import { Storage, K } from '../services/storage.js';
 
-const K_PLANNER = (g) => `atemix.planner.${g}`;
 const KEY_LAST_VIEW = 'atemix.planner.lastView';
 const KEY_LAST_DATE = 'atemix.planner.lastWeek';
 const TIME_START = 7;
@@ -146,6 +145,7 @@ function injectStyles() {
     .planner-event:active { cursor:grabbing; }
     .planner-event-title { font-weight:600; font-size:12px; margin:0; }
     .planner-event-time { font-size:11px; opacity:0.75; margin-top:2px; }
+    .planner-event .nem-ref { font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; margin-top: 4px; display: inline-block; }
     .planner-event-controls { margin-top:6px; display:flex; gap:6px; }
     .planner-event-controls button { font-size:11px; padding:4px 6px; }
     .planner-all-day .planner-event-badge { padding:6px 8px; border-radius:8px; background:rgba(236,72,153,0.18); border:1px solid rgba(236,72,153,0.35); font-size:12px; display:flex; justify-content:space-between; gap:8px; align-items:center; cursor:pointer; }
@@ -198,7 +198,7 @@ function extractConfigGroup() {
 }
 
 function loadState(group) {
-  const stored = Storage.get(K_PLANNER(group), []);
+  const stored = Storage.get(K.PLANNER(group), []);
   if (!Array.isArray(stored)) {
     state.events = [];
     return;
@@ -209,7 +209,7 @@ function loadState(group) {
 }
 
 function saveState() {
-  Storage.set(K_PLANNER(state.group), state.events);
+  Storage.set(K.PLANNER(state.group), state.events);
   Storage.set(KEY_LAST_VIEW, state.view);
   saveLastWeek();
 }
@@ -338,9 +338,11 @@ function renderWeekEvents() {
     el.draggable = true;
     el.style.top = `${top}px`;
     el.style.height = `${height}px`;
+    const nemRef = event.nemId ? `<div class="nem-ref">${escapeHtml(event.nemId)}</div>` : '';
     el.innerHTML = `
       <p class="planner-event-title">${escapeHtml(event.title || 'Evento')}</p>
       <div class="planner-event-time">${formatHour(startDate)} - ${formatHour(endDate)}</div>
+      ${nemRef}
     `;
     el.addEventListener('dragstart', handleEventDragStart);
     el.addEventListener('dragend', clearDropTargets);
@@ -374,7 +376,8 @@ function renderAgendaView() {
     const start = parseDateTime(event.allDay ? `${event.start}T00:00` : event.start);
     const end = event.end ? parseDateTime(event.end) : new Date(start.getTime() + 60 * 60000);
     const left = document.createElement('div');
-    left.innerHTML = `<strong>${escapeHtml(event.title || 'Evento')}</strong><div class="agenda-meta">${formatAgendaMeta(event, start, end)}</div>`;
+    const nemRef = event.nemId ? `<div class="nem-ref" style="margin-top:4px;">${escapeHtml(event.nemId)}</div>` : '';
+    left.innerHTML = `<strong>${escapeHtml(event.title || 'Evento')}</strong><div class="agenda-meta">${formatAgendaMeta(event, start, end)}</div>${nemRef}`;
     const right = document.createElement('div');
     right.style.display = 'flex';
     right.style.gap = '8px';
@@ -510,8 +513,14 @@ function openEventDialog(existing, defaults = {}) {
   const allDay = dialog.querySelector('#planner-all-day');
   const content = dialog.querySelector('#planner-content');
   const link = dialog.querySelector('#planner-link');
-  const nem = dialog.querySelector('#planner-nem');
+  const nemSelect = dialog.querySelector('#planner-nem');
   const deleteBtn = dialog.querySelector('#planner-delete');
+
+  // Populate NEM select
+  const cfg = Storage.get(K.CONFIG) || {};
+  const plan = Storage.get(K.PLAN(cfg.ciclo || ''), { unidades: [] });
+  const nemOptions = (plan.unidades || []).flatMap(u => u.contenidos_ids || []);
+  nemSelect.innerHTML = '<option value="">Ninguna</option>' + nemOptions.map(id => `<option value="${id}">${id}</option>`).join('');
 
   const editEvent = existing || null;
   dialog.dataset.editingId = editEvent?.id || '';
@@ -532,7 +541,7 @@ function openEventDialog(existing, defaults = {}) {
     allDay.checked = !!editEvent.allDay;
     content.value = editEvent.content || '';
     link.value = editEvent.link || '';
-    nem.value = editEvent.nemId || '';
+    nemSelect.value = editEvent.nemId || '';
     deleteBtn?.classList.remove('hidden');
   } else {
     title.value = '';
@@ -545,7 +554,7 @@ function openEventDialog(existing, defaults = {}) {
     allDay.checked = !!defaults.allDay;
     content.value = '';
     link.value = '';
-    nem.value = '';
+    nemSelect.value = '';
     deleteBtn?.classList.add('hidden');
   }
 
@@ -595,7 +604,7 @@ function openEventDialog(existing, defaults = {}) {
       end: allDayValue ? null : formatISODateTime(endDate),
       content: content.value.trim(),
       link: link.value.trim(),
-      nemId: nem.value.trim(),
+      nemId: nemSelect.value.trim(),
     };
 
     const idx = state.events.findIndex((ev) => ev.id === payload.id);
@@ -672,7 +681,7 @@ function ensureDialog() {
         </div>
         <div>
           <label for="planner-nem">Referencia NEM</label>
-          <input id="planner-nem" class="input-field" placeholder="Ej. U1-C3">
+          <select id="planner-nem" class="select-field"></select>
         </div>
       </div>
       <div class="planner-dialog-actions">
@@ -777,7 +786,7 @@ function startOfWeek(date) {
 }
 
 function exportICal(group) {
-  const events = Storage.get(K_PLANNER(group), []);
+  const events = Storage.get(K.PLANNER(group), []);
   if (!Array.isArray(events) || events.length === 0) {
     notify('warn', 'No hay actividades para exportar.');
     return;
@@ -821,7 +830,7 @@ function formatICSDate(date, dateOnly = false) {
 }
 
 function escapeText(text) {
-  return String(text || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+  return String(text || '').replace(/\/g, '\\').replace(/\n/g, '\n').replace(/,/g, '\,').replace(/;/g, '\;');
 }
 
 function escapeHtml(str) {
