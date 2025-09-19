@@ -830,9 +830,7 @@ function sanitizeResponses(text, expected) {
 export function parseOcrEntries(text, exam) {
   const entries = [];
   const lines = String(text || '')
-    .split(/
-?
-/)
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
   let current = { student: '', responses: '' };
